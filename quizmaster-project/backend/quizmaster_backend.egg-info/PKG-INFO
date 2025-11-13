@@ -1,0 +1,15 @@
+Metadata-Version: 2.4
+Name: quizmaster-backend
+Version: 0.1.0
+Requires-Python: >=3.9
+Requires-Dist: fastapi
+Requires-Dist: uvicorn[standard]
+Requires-Dist: python-jose[cryptography]
+Requires-Dist: pydantic
+Requires-Dist: sqlalchemy>=2.0
+Requires-Dist: alembic
+Requires-Dist: httpx
+Requires-Dist: pytest
+Requires-Dist: pytest-cov
+Requires-Dist: requests
+Requires-Dist: selenium

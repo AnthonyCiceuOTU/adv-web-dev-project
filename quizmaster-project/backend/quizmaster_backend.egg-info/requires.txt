@@ -1,0 +1,11 @@
+fastapi
+uvicorn[standard]
+python-jose[cryptography]
+pydantic
+sqlalchemy>=2.0
+alembic
+httpx
+pytest
+pytest-cov
+requests
+selenium

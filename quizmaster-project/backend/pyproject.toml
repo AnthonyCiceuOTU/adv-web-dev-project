@@ -1,0 +1,20 @@
+[project]
+name = "quizmaster-backend"
+version = "0.1.0"
+requires-python = ">=3.9"
+dependencies = [
+  "fastapi",
+  "uvicorn[standard]",
+  "python-jose[cryptography]",
+  "pydantic",
+  "sqlalchemy>=2.0",
+  "alembic",
+  "httpx",
+  "pytest",
+  "pytest-cov",
+  "requests",
+  "selenium"
+]
+
+[tool.pytest.ini_options]
+testpaths = ["app","tests"]

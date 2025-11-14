@@ -14,13 +14,38 @@ export default function App(){
   const [answers,setAnswers] = useState({});
   const [stage,setStage] = useState(token? 'pick':'login');
   const [score,setScore] = useState(0);
+  const [loginError, setLoginError] = useState('');
 
   async function login(e){
-    e.preventDefault();
-    const { access_token } = await api('/auth/login',{ method:'POST', body: JSON.stringify({email,password}) });
-    localStorage.setItem('token', access_token); setToken(access_token);
-    setStage('pick'); loadCats(access_token);
+  e.preventDefault();
+
+  // Clear previous errors
+  setLoginError("");
+
+  // Front-end check
+  if (!email.trim() || !password.trim()) {
+    setLoginError("Email and password cannot be empty.");
+    return;
   }
+
+  try {
+    const { access_token } = await api('/auth/login', {
+      method:'POST',
+      body: JSON.stringify({ email, password })
+    });
+
+    // Success
+    localStorage.setItem('token', access_token);
+    setToken(access_token);
+    setStage('pick');
+    loadCats(access_token);
+
+  } catch (err) {
+    // Wrong credentials → message displayed on screen
+    setLoginError("Incorrect email or password.");
+  }
+}
+
   async function loadCats(tok){ const c = await api('/quiz/categories', { headers:{ Authorization:'Bearer '+tok } }); setCats(c); }
   function logout(){ localStorage.removeItem('token'); setToken(''); setStage('login'); }
 
@@ -42,17 +67,52 @@ export default function App(){
     setStage('result');
   }
 
-  if(!token || stage==='login'){
-    return (<div style={{maxWidth:400, margin:'40px auto'}}>
+  if (!token || stage === 'login') {
+  return (
+    <div style={{ maxWidth: 400, margin: '40px auto' }}>
       <h2>Login</h2>
-      <form onSubmit={login} style={{display:'grid', gap:8}}>
-        <input placeholder="email" value={email} onChange={e=>setEmail(e.target.value)}/>
-        <input type="password" placeholder="password" value={password} onChange={e=>setPassword(e.target.value)}/>
+
+      <form onSubmit={login} style={{ display: 'grid', gap: 8 }}>
+        <input
+          placeholder="email"
+          value={email}
+          onChange={e => { setEmail(e.target.value); setLoginError(''); }}
+          style={{
+            borderColor: loginError && !email ? 'red' : '#ccc'
+          }}
+        />
+
+        <input
+          type="password"
+          placeholder="password"
+          value={password}
+          onChange={e => { setPassword(e.target.value); setLoginError(''); }}
+          style={{
+            borderColor: loginError && !password ? 'red' : '#ccc'
+          }}
+        />
+
+        {/* Error message box */}
+        {loginError && (
+          <div style={{
+            marginTop: 4,
+            color: 'red',
+            fontSize: 14,
+            padding: '4px 0'
+          }}>
+            {loginError}
+          </div>
+        )}
+
         <button>Sign in</button>
       </form>
-      <p style={{marginTop:8,fontSize:12}}>Demo: demo@user.com / demo</p>
-    </div>)
-  }
+
+      <p style={{ marginTop: 8, fontSize: 12 }}>
+        Demo: demo@user.com / demo
+      </p>
+    </div>
+  );
+}
 
   if(stage==='pick' && cats.length===0){ loadCats(token); }
 

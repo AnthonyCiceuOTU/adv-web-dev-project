@@ -12,7 +12,10 @@ function shuffle(arr) {
 export default function App() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+
   const [loginError, setLoginError] = useState('');
+  const [signupError, setSignupError] = useState('');
+  const [showSignup, setShowSignup] = useState(false);
 
   const [token, setToken] = useState(localStorage.getItem('token') || '');
   const [cats, setCats] = useState([]);
@@ -23,6 +26,7 @@ export default function App() {
   const [stage, setStage] = useState(token ? 'pick' : 'login');
   const [score, setScore] = useState(0);
 
+  // ------------------- LOGIN -------------------
   async function login(e) {
     e.preventDefault();
     setLoginError('');
@@ -47,6 +51,34 @@ export default function App() {
     }
   }
 
+  // ------------------- SIGN UP -------------------
+  async function registerUser(e) {
+    e.preventDefault();
+    setSignupError('');
+
+    if (!email.trim() || !password.trim()) {
+      setSignupError('Email and password cannot be empty.');
+      return;
+    }
+
+    try {
+      const { access_token } = await api('/auth/register', {
+        method: 'POST',
+        body: JSON.stringify({ email, password }),
+      });
+
+      // Success
+      localStorage.setItem('token', access_token);
+      setToken(access_token);
+      setStage('pick');
+      loadCats(access_token);
+
+    } catch (err) {
+      setSignupError('Email is already in use.');
+    }
+  }
+
+  // ------------------- CATEGORY LOADING -------------------
   async function loadCats(tok) {
     const c = await api('/quiz/categories', {
       headers: { Authorization: 'Bearer ' + tok },
@@ -58,17 +90,21 @@ export default function App() {
     localStorage.removeItem('token');
     setToken('');
     setStage('login');
+    setShowSignup(false);
   }
 
+  // ------------------- QUIZ START -------------------
   async function start() {
     const data = await api(
       `/quiz/start?category=${category}&difficulty=${difficulty}&amount=10`,
       { headers: { Authorization: 'Bearer ' + token } }
     );
+
     const enriched = data.items.map(q => ({
       ...q,
       options: shuffle([q.correct_answer, ...q.incorrect_answers]),
     }));
+
     setItems(enriched);
     setAnswers({});
     setStage('play');
@@ -83,6 +119,7 @@ export default function App() {
       (acc, q, i) => acc + (answers[i] === q.correct_answer ? 1 : 0),
       0
     );
+
     setScore(correct);
 
     await api('/scores', {
@@ -99,78 +136,140 @@ export default function App() {
     setStage('result');
   }
 
-  // ------------------- LOGIN PAGE -------------------
+  // ------------------- LOGIN / SIGNUP PAGE -------------------
   if (!token || stage === 'login') {
     return (
       <div style={{ fontFamily: 'Trebuchet MS, sans-serif' }}>
         <Nav showLogout={false} />
 
         <div style={{ maxWidth: 400, margin: '40px auto' }}>
-          <h2>Login</h2>
+          {!showSignup ? (
+            <>
+              <h2>Login</h2>
 
-          <form onSubmit={login} style={{ display: 'grid', gap: 8 }}>
-            <input
-              placeholder="email"
-              value={email}
-              onChange={e => {
-                setEmail(e.target.value);
-                setLoginError('');
-              }}
-              style={{
-                borderColor: loginError && !email ? 'red' : '#ccc',
-                padding: '8px',
-                borderRadius: '4px',
-              }}
-            />
+              <form onSubmit={login} style={{ display: 'grid', gap: 8 }}>
+                <input
+                  placeholder="email"
+                  value={email}
+                  onChange={e => {
+                    setEmail(e.target.value);
+                    setLoginError('');
+                  }}
+                  style={{ padding: '8px', borderRadius: '4px' }}
+                />
 
-            <input
-              type="password"
-              placeholder="password"
-              value={password}
-              onChange={e => {
-                setPassword(e.target.value);
-                setLoginError('');
-              }}
-              style={{
-                borderColor: loginError && !password ? 'red' : '#ccc',
-                padding: '8px',
-                borderRadius: '4px',
-              }}
-            />
+                <input
+                  type="password"
+                  placeholder="password"
+                  value={password}
+                  onChange={e => {
+                    setPassword(e.target.value);
+                    setLoginError('');
+                  }}
+                  style={{ padding: '8px', borderRadius: '4px' }}
+                />
 
-            {loginError && (
-              <div style={{ color: 'red', fontSize: 14 }}>{loginError}</div>
-            )}
+                {loginError && (
+                  <div style={{ color: 'red', fontSize: 14 }}>{loginError}</div>
+                )}
 
-            <button
-              style={{
-                padding: '8px',
-                background: '#4A6CF7',
-                color: 'white',
-                border: 'none',
-                borderRadius: '6px',
-                cursor: 'pointer',
-                fontWeight: '600',
-              }}
-            >
-              Sign in
-            </button>
-          </form>
+                <button
+                  style={{
+                    padding: '8px',
+                    background: '#4A6CF7',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '6px',
+                    cursor: 'pointer',
+                    fontWeight: 600,
+                  }}
+                >
+                  Sign in
+                </button>
+              </form>
 
-          <p style={{ marginTop: 8, fontSize: 12 }}>
-            Demo: demo@user.com / demo
-          </p>
+              <p style={{ marginTop: 12 }}>
+                Don’t have an account?{' '}
+                <span
+                  style={{ color: '#4A6CF7', cursor: 'pointer' }}
+                  onClick={() => {
+                    setShowSignup(true);
+                    setLoginError('');
+                  }}
+                >
+                  Create one
+                </span>
+              </p>
+            </>
+          ) : (
+            <>
+              <h2>Create Account</h2>
+
+              <form onSubmit={registerUser} style={{ display: 'grid', gap: 8 }}>
+                <input
+                  placeholder="email"
+                  value={email}
+                  onChange={e => {
+                    setEmail(e.target.value);
+                    setSignupError('');
+                  }}
+                  style={{ padding: '8px', borderRadius: '4px' }}
+                />
+
+                <input
+                  type="password"
+                  placeholder="password"
+                  value={password}
+                  onChange={e => {
+                    setPassword(e.target.value);
+                    setSignupError('');
+                  }}
+                  style={{ padding: '8px', borderRadius: '4px' }}
+                />
+
+                {signupError && (
+                  <div style={{ color: 'red', fontSize: 14 }}>{signupError}</div>
+                )}
+
+                <button
+                  style={{
+                    padding: '8px',
+                    background: '#4A6CF7',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '6px',
+                    cursor: 'pointer',
+                    fontWeight: 600,
+                  }}
+                >
+                  Create Account
+                </button>
+              </form>
+
+              <p style={{ marginTop: 12 }}>
+                Already have an account?{' '}
+                <span
+                  style={{ color: '#4A6CF7', cursor: 'pointer' }}
+                  onClick={() => {
+                    setShowSignup(false);
+                    setSignupError('');
+                  }}
+                >
+                  Sign in
+                </span>
+              </p>
+            </>
+          )}
         </div>
       </div>
     );
   }
 
-  // Load categories on pick stage
+  // ------------------- PICK PAGE -------------------
   if (stage === 'pick' && cats.length === 0) {
     loadCats(token);
   }
 
-  // ------------------- PICK PAGE -------------------
   if (stage === 'pick') {
     return (
       <div style={{ fontFamily: 'Trebuchet MS, sans-serif' }}>

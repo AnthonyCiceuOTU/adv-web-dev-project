@@ -8,9 +8,10 @@ This project is designed to meet every requirement in the **CSCI 4230U Advanced 
 
 ### Backend (FastAPI)
 ```powershell
+cd quizmaster-project
 cd backend
 py -3.11 -m venv .venv
-.\.venv\Scripts\Activate
+.\venv\Scripts\Activate
 pip install -e .
 uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 ```

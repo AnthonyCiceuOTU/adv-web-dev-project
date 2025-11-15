@@ -13,7 +13,9 @@ dependencies = [
   "pytest",
   "pytest-cov",
   "requests",
-  "selenium"
+  "selenium",
+  "bcrypt==4.0.1",
+  "passlib"
 ]
 
 [tool.pytest.ini_options]

@@ -9,6 +9,7 @@ class User(Base):
     __tablename__ = "users"
     id: Mapped[int] = mapped_column(primary_key=True)
     email: Mapped[str] = mapped_column(String(255), unique=True, index=True)
+    password: Mapped[str] = mapped_column(String(255))
     attempts: Mapped[list["Attempt"]] = relationship(back_populates="user", cascade="all, delete-orphan")
 
 class Attempt(Base):

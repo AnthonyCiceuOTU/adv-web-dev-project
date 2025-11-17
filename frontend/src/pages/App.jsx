@@ -1,7 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { api } from '../api';
 import Nav from '../components/Nav';
+import Scores from '../components/Scores';
 
+// -------- Shuffle Helper --------
 function shuffle(arr) {
   return arr
     .map(v => ({ v, s: Math.random() }))
@@ -10,6 +12,7 @@ function shuffle(arr) {
 }
 
 export default function App() {
+  // ------------------- STATE -------------------
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
 
@@ -24,7 +27,11 @@ export default function App() {
   const [items, setItems] = useState([]);
   const [answers, setAnswers] = useState({});
   const [stage, setStage] = useState(token ? 'pick' : 'login');
+
   const [score, setScore] = useState(0);
+
+  // NEW: Page navigation (home = quiz selection, scores = score history)
+  const [page, setPage] = useState("home");
 
   // ------------------- LOGIN -------------------
   async function login(e) {
@@ -45,6 +52,7 @@ export default function App() {
       localStorage.setItem('token', access_token);
       setToken(access_token);
       setStage('pick');
+      setPage("home");
       loadCats(access_token);
     } catch (err) {
       setLoginError('Incorrect email or password.');
@@ -67,12 +75,11 @@ export default function App() {
         body: JSON.stringify({ email, password }),
       });
 
-      // Success
       localStorage.setItem('token', access_token);
       setToken(access_token);
       setStage('pick');
+      setPage("home");
       loadCats(access_token);
-
     } catch (err) {
       setSignupError('Email is already in use.');
     }
@@ -86,11 +93,13 @@ export default function App() {
     setCats(c);
   }
 
+  // ------------------- LOGOUT -------------------
   function logout() {
     localStorage.removeItem('token');
     setToken('');
     setStage('login');
     setShowSignup(false);
+    setPage("home");
   }
 
   // ------------------- QUIZ START -------------------
@@ -114,6 +123,7 @@ export default function App() {
     setAnswers({ ...answers, [i]: opt });
   }
 
+  // ------------------- SUBMIT QUIZ -------------------
   async function submit() {
     const correct = items.reduce(
       (acc, q, i) => acc + (answers[i] === q.correct_answer ? 1 : 0),
@@ -136,11 +146,13 @@ export default function App() {
     setStage('result');
   }
 
-  // ------------------- LOGIN / SIGNUP PAGE -------------------
+  // ============================================================
+  // LOGIN / SIGNUP
+  // ============================================================
   if (!token || stage === 'login') {
     return (
       <div style={{ fontFamily: 'Trebuchet MS, sans-serif' }}>
-        <Nav showLogout={false} />
+        <Nav showLogout={false} onNavigate={setPage} />
 
         <div style={{ maxWidth: 400, margin: '40px auto' }}>
           {!showSignup ? (
@@ -265,15 +277,32 @@ export default function App() {
     );
   }
 
-  // ------------------- PICK PAGE -------------------
-  if (stage === 'pick' && cats.length === 0) {
-    loadCats(token);
-  }
-
-  if (stage === 'pick') {
+  // ============================================================
+  // SCORES PAGE
+  // ============================================================
+  if (page === "scores") {
     return (
       <div style={{ fontFamily: 'Trebuchet MS, sans-serif' }}>
-        <Nav onLogout={logout} showLogout={true} />
+        <Nav
+          onLogout={logout}
+          showLogout={true}
+          onNavigate={setPage}
+        />
+
+        <Scores token={token} />
+      </div>
+    );
+  }
+
+  // ============================================================
+  // PICK PAGE
+  // ============================================================
+  if (stage === 'pick') {
+    if (cats.length === 0) loadCats(token);
+
+    return (
+      <div style={{ fontFamily: 'Trebuchet MS, sans-serif' }}>
+        <Nav onLogout={logout} showLogout={true} onNavigate={setPage} />
 
         <div style={{ maxWidth: 700, margin: '20px auto', display: 'grid', gap: 12 }}>
           <div>
@@ -302,11 +331,13 @@ export default function App() {
     );
   }
 
-  // ------------------- PLAY PAGE -------------------
+  // ============================================================
+  // PLAY PAGE
+  // ============================================================
   if (stage === 'play') {
     return (
       <div style={{ fontFamily: 'Trebuchet MS, sans-serif' }}>
-        <Nav onLogout={logout} showLogout={true} />
+        <Nav onLogout={logout} showLogout={true} onNavigate={setPage} />
 
         <div style={{ maxWidth: 800, margin: '20px auto', display: 'grid', gap: 16 }}>
           {items.map((q, i) => (
@@ -345,10 +376,12 @@ export default function App() {
     );
   }
 
-  // ------------------- RESULT PAGE -------------------
+  // ============================================================
+  // RESULT PAGE
+  // ============================================================
   return (
     <div style={{ fontFamily: 'Trebuchet MS, sans-serif' }}>
-      <Nav onLogout={logout} showLogout={true} />
+      <Nav onLogout={logout} showLogout={true} onNavigate={setPage} />
 
       <div style={{ maxWidth: 600, margin: '40px auto', textAlign: 'center' }}>
         <h2>Result</h2>

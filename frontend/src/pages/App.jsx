@@ -6,10 +6,110 @@ import Scores from '../components/Scores';
 // -------- Shuffle Helper --------
 function shuffle(arr) {
   return arr
-    .map(v => ({ v, s: Math.random() }))
+    .map((v) => ({ v, s: Math.random() }))
     .sort((a, b) => a.s - b.s)
-    .map(o => o.v);
+    .map((o) => o.v);
 }
+
+// -------- Shared Styles (simple inline design system) --------
+const appShellStyle = {
+  fontFamily:
+    'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+  minHeight: '100vh',
+  background:
+    'radial-gradient(circle at top left, #e0f2fe 0, #eef2ff 40%, #f9fafb 100%)',
+  padding: '18px 12px 32px',
+};
+
+const pageWrapperStyle = {
+  maxWidth: 960,
+  margin: '0 auto',
+};
+
+const authCardWrapperStyle = {
+  maxWidth: 420,
+  margin: '40px auto',
+};
+
+const cardStyle = {
+  background: 'white',
+  borderRadius: 18,
+  padding: '22px 22px 24px',
+  boxShadow: '0 18px 40px rgba(15, 23, 42, 0.18)',
+  border: '1px solid rgba(148, 163, 184, 0.22)',
+};
+
+const headingStyle = {
+  margin: 0,
+  fontSize: 26,
+  fontWeight: 800,
+  color: '#0f172a',
+};
+
+const subheadingStyle = {
+  margin: '4px 0 16px',
+  fontSize: 13,
+  color: '#6b7280',
+};
+
+const fieldLabelStyle = {
+  fontSize: 13,
+  fontWeight: 600,
+  color: '#4b5563',
+  marginBottom: 4,
+};
+
+const inputStyle = {
+  padding: '9px 11px',
+  borderRadius: 10,
+  border: '1px solid #d1d5db',
+  fontSize: 14,
+  outline: 'none',
+};
+
+const primaryButtonStyle = {
+  marginTop: 8,
+  background: 'linear-gradient(135deg, #4f46e5, #6366f1)',
+  color: '#ffffff',
+  border: 'none',
+  padding: '9px 16px',
+  borderRadius: 999,
+  cursor: 'pointer',
+  fontWeight: 600,
+  fontSize: 14,
+  boxShadow: '0 10px 24px rgba(79, 70, 229, 0.4)',
+};
+
+const secondaryButtonStyle = {
+  background: 'transparent',
+  border: 'none',
+  padding: 0,
+  margin: 0,
+  color: '#4f46e5',
+  fontWeight: 600,
+  cursor: 'pointer',
+};
+
+const errorStyle = {
+  marginTop: 8,
+  marginBottom: 4,
+  fontSize: 13,
+  color: '#b91c1c',
+};
+
+const successStyle = {
+  marginTop: 8,
+  marginBottom: 4,
+  fontSize: 13,
+  color: '#15803d',
+};
+
+const sectionTitleStyle = {
+  margin: '0 0 12px',
+  fontSize: 20,
+  fontWeight: 700,
+  color: '#111827',
+};
 
 export default function App() {
   // ------------------- STATE -------------------
@@ -27,11 +127,25 @@ export default function App() {
   const [items, setItems] = useState([]);
   const [answers, setAnswers] = useState({});
   const [stage, setStage] = useState(token ? 'pick' : 'login');
-
   const [score, setScore] = useState(0);
+  const [page, setPage] = useState('home');
+  const [questionCount, setQuestionCount] = useState(10);
 
-  // NEW: Page navigation (home = quiz selection, scores = score history)
-  const [page, setPage] = useState("home");
+  // Profile / settings state
+  const [profile, setProfile] = useState(null);
+  const [profileNameInput, setProfileNameInput] = useState('');
+  const [profileStatus, setProfileStatus] = useState('');
+  const [profileError, setProfileError] = useState('');
+
+  // Whenever we get/set a token, hydrate categories + profile
+  useEffect(() => {
+    if (!token) {
+      setProfile(null);
+      return;
+    }
+    loadCats(token);
+    loadProfile(token);
+  }, [token]);
 
   // ------------------- LOGIN -------------------
   async function login(e) {
@@ -52,8 +166,8 @@ export default function App() {
       localStorage.setItem('token', access_token);
       setToken(access_token);
       setStage('pick');
-      setPage("home");
-      loadCats(access_token);
+      setPage('home');
+      setPassword('');
     } catch (err) {
       setLoginError('Incorrect email or password.');
     }
@@ -78,19 +192,36 @@ export default function App() {
       localStorage.setItem('token', access_token);
       setToken(access_token);
       setStage('pick');
-      setPage("home");
-      loadCats(access_token);
+      setPage('home');
+      setPassword('');
     } catch (err) {
       setSignupError('Email is already in use.');
     }
   }
 
-  // ------------------- CATEGORY LOADING -------------------
+  // ------------------- CATEGORY / PROFILE LOADING -------------------
   async function loadCats(tok) {
-    const c = await api('/quiz/categories', {
-      headers: { Authorization: 'Bearer ' + tok },
-    });
-    setCats(c);
+    try {
+      const c = await api('/quiz/categories', {
+        headers: { Authorization: 'Bearer ' + tok },
+      });
+      setCats(c);
+    } catch {
+      setCats([]);
+    }
+  }
+
+  async function loadProfile(tok) {
+    try {
+      const me = await api('/auth/me', {
+        headers: { Authorization: 'Bearer ' + tok },
+      });
+      setProfile(me);
+      setProfileNameInput(me.name || '');
+    } catch {
+      setProfile(null);
+      setProfileNameInput('');
+    }
   }
 
   // ------------------- LOGOUT -------------------
@@ -99,17 +230,19 @@ export default function App() {
     setToken('');
     setStage('login');
     setShowSignup(false);
-    setPage("home");
+    setPage('home');
+    setProfile(null);
+    setProfileNameInput('');
   }
 
   // ------------------- QUIZ START -------------------
   async function start() {
     const data = await api(
-      `/quiz/start?category=${category}&difficulty=${difficulty}&amount=10`,
-      { headers: { Authorization: 'Bearer ' + token } }
+      `/quiz/start?category=${category}&difficulty=${difficulty}&amount=${questionCount}`,
+      { headers: { Authorization: 'Bearer ' + token } },
     );
 
-    const enriched = data.items.map(q => ({
+    const enriched = data.items.map((q) => ({
       ...q,
       options: shuffle([q.correct_answer, ...q.incorrect_answers]),
     }));
@@ -119,15 +252,18 @@ export default function App() {
     setStage('play');
   }
 
-  function pick(i, opt) {
-    setAnswers({ ...answers, [i]: opt });
+  function pick(idx, opt) {
+    setAnswers((prev) => ({
+      ...prev,
+      [idx]: opt,
+    }));
   }
 
   // ------------------- SUBMIT QUIZ -------------------
   async function submit() {
     const correct = items.reduce(
       (acc, q, i) => acc + (answers[i] === q.correct_answer ? 1 : 0),
-      0
+      0,
     );
 
     setScore(correct);
@@ -146,132 +282,177 @@ export default function App() {
     setStage('result');
   }
 
+  // ------------------- SETTINGS ACTIONS -------------------
+  async function handleSaveName(e) {
+    e.preventDefault();
+    setProfileStatus('');
+    setProfileError('');
+
+    try {
+      const updated = await api('/auth/me', {
+        method: 'PATCH',
+        headers: { Authorization: 'Bearer ' + token },
+        body: JSON.stringify({ name: profileNameInput }),
+      });
+      setProfile(updated);
+      setProfileStatus('Display name updated.');
+    } catch (err) {
+      setProfileError('Could not update name. Please try again.');
+    }
+  }
+
+  async function handleDeleteAccount() {
+    if (
+      !window.confirm(
+        'Delete your account and all scores? This cannot be undone.',
+      )
+    ) {
+      return;
+    }
+
+    try {
+      await api('/auth/me', {
+        method: 'DELETE',
+        headers: { Authorization: 'Bearer ' + token },
+      });
+      // Full logout once account is gone
+      logout();
+    } catch (err) {
+      setProfileError('Could not delete account. Please try again.');
+    }
+  }
+
   // ============================================================
   // LOGIN / SIGNUP
   // ============================================================
   if (!token || stage === 'login') {
     return (
-      <div style={{ fontFamily: 'Trebuchet MS, sans-serif' }}>
+      <div style={appShellStyle}>
         <Nav showLogout={false} onNavigate={setPage} />
 
-        <div style={{ maxWidth: 400, margin: '40px auto' }}>
-          {!showSignup ? (
-            <>
-              <h2>Login</h2>
+        <div style={authCardWrapperStyle}>
+          <div style={cardStyle}>
+            <h1 style={headingStyle}>QuizMaster</h1>
+            <p style={subheadingStyle}>
+              Log in or create an account to save your trivia scores.
+            </p>
 
-              <form onSubmit={login} style={{ display: 'grid', gap: 8 }}>
-                <input
-                  placeholder="email"
-                  value={email}
-                  onChange={e => {
-                    setEmail(e.target.value);
-                    setLoginError('');
-                  }}
-                  style={{ padding: '8px', borderRadius: '4px' }}
-                />
+            {!showSignup ? (
+              <>
+                <h2 style={sectionTitleStyle}>Sign in</h2>
 
-                <input
-                  type="password"
-                  placeholder="password"
-                  value={password}
-                  onChange={e => {
-                    setPassword(e.target.value);
-                    setLoginError('');
-                  }}
-                  style={{ padding: '8px', borderRadius: '4px' }}
-                />
+                {loginError && <div style={errorStyle}>{loginError}</div>}
 
-                {loginError && (
-                  <div style={{ color: 'red', fontSize: 14 }}>{loginError}</div>
-                )}
-
-                <button
-                  style={{
-                    padding: '8px',
-                    background: '#4A6CF7',
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: '6px',
-                    cursor: 'pointer',
-                    fontWeight: 600,
-                  }}
+                <form
+                  onSubmit={login}
+                  style={{ display: 'grid', gap: 10, marginTop: 8 }}
                 >
-                  Sign in
-                </button>
-              </form>
+                  <div style={{ display: 'grid', gap: 4 }}>
+                    <label style={fieldLabelStyle}>Email</label>
+                    <input
+                      placeholder="you@example.com"
+                      type="email"
+                      value={email}
+                      onChange={(e) => {
+                        setEmail(e.target.value);
+                        setLoginError('');
+                      }}
+                      style={inputStyle}
+                    />
+                  </div>
 
-              <p style={{ marginTop: 12 }}>
-                Don’t have an account?{' '}
-                <span
-                  style={{ color: '#4A6CF7', cursor: 'pointer' }}
-                  onClick={() => {
-                    setShowSignup(true);
-                    setLoginError('');
-                  }}
+                  <div style={{ display: 'grid', gap: 4 }}>
+                    <label style={fieldLabelStyle}>Password</label>
+                    <input
+                      placeholder="••••••••"
+                      type="password"
+                      value={password}
+                      onChange={(e) => {
+                        setPassword(e.target.value);
+                        setLoginError('');
+                      }}
+                      style={inputStyle}
+                    />
+                  </div>
+
+                  <button type="submit" style={primaryButtonStyle}>
+                    Sign in
+                  </button>
+                </form>
+
+                <p style={{ marginTop: 16, fontSize: 13 }}>
+                  Need an account?{' '}
+                  <button
+                    type="button"
+                    style={secondaryButtonStyle}
+                    onClick={() => {
+                      setShowSignup(true);
+                      setSignupError('');
+                    }}
+                  >
+                    Create one
+                  </button>
+                </p>
+              </>
+            ) : (
+              <>
+                <h2 style={sectionTitleStyle}>Create account</h2>
+
+                {signupError && <div style={errorStyle}>{signupError}</div>}
+
+                <form
+                  onSubmit={registerUser}
+                  style={{ display: 'grid', gap: 10, marginTop: 8 }}
                 >
-                  Create one
-                </span>
-              </p>
-            </>
-          ) : (
-            <>
-              <h2>Create Account</h2>
+                  <div style={{ display: 'grid', gap: 4 }}>
+                    <label style={fieldLabelStyle}>Email</label>
+                    <input
+                      placeholder="you@example.com"
+                      type="email"
+                      value={email}
+                      onChange={(e) => {
+                        setEmail(e.target.value);
+                        setSignupError('');
+                      }}
+                      style={inputStyle}
+                    />
+                  </div>
 
-              <form onSubmit={registerUser} style={{ display: 'grid', gap: 8 }}>
-                <input
-                  placeholder="email"
-                  value={email}
-                  onChange={e => {
-                    setEmail(e.target.value);
-                    setSignupError('');
-                  }}
-                  style={{ padding: '8px', borderRadius: '4px' }}
-                />
+                  <div style={{ display: 'grid', gap: 4 }}>
+                    <label style={fieldLabelStyle}>Password</label>
+                    <input
+                      placeholder="Choose a password"
+                      type="password"
+                      value={password}
+                      onChange={(e) => {
+                        setPassword(e.target.value);
+                        setSignupError('');
+                      }}
+                      style={inputStyle}
+                    />
+                  </div>
 
-                <input
-                  type="password"
-                  placeholder="password"
-                  value={password}
-                  onChange={e => {
-                    setPassword(e.target.value);
-                    setSignupError('');
-                  }}
-                  style={{ padding: '8px', borderRadius: '4px' }}
-                />
+                  <button type="submit" style={primaryButtonStyle}>
+                    Create account
+                  </button>
+                </form>
 
-                {signupError && (
-                  <div style={{ color: 'red', fontSize: 14 }}>{signupError}</div>
-                )}
-
-                <button
-                  style={{
-                    padding: '8px',
-                    background: '#4A6CF7',
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: '6px',
-                    cursor: 'pointer',
-                    fontWeight: 600,
-                  }}
-                >
-                  Create Account
-                </button>
-              </form>
-
-              <p style={{ marginTop: 12 }}>
-                Already have an account?{' '}
-                <span
-                  style={{ color: '#4A6CF7', cursor: 'pointer' }}
-                  onClick={() => {
-                    setShowSignup(false);
-                    setSignupError('');
-                  }}
-                >
-                  Sign in
-                </span>
-              </p>
-            </>
-          )}
+                <p style={{ marginTop: 16, fontSize: 13 }}>
+                  Already have an account?{' '}
+                  <button
+                    type="button"
+                    style={secondaryButtonStyle}
+                    onClick={() => {
+                      setShowSignup(false);
+                      setSignupError('');
+                    }}
+                  >
+                    Sign in
+                  </button>
+                </p>
+              </>
+            )}
+          </div>
         </div>
       </div>
     );
@@ -280,16 +461,134 @@ export default function App() {
   // ============================================================
   // SCORES PAGE
   // ============================================================
-  if (page === "scores") {
+  if (page === 'scores') {
     return (
-      <div style={{ fontFamily: 'Trebuchet MS, sans-serif' }}>
-        <Nav
-          onLogout={logout}
-          showLogout={true}
-          onNavigate={setPage}
-        />
+      <div style={appShellStyle}>
+        <Nav onLogout={logout} showLogout={true} onNavigate={setPage} />
+        <div style={pageWrapperStyle}>
+          <Scores token={token} />
+        </div>
+      </div>
+    );
+  }
 
-        <Scores token={token} />
+  // ============================================================
+  // SETTINGS PAGE
+  // ============================================================
+  if (page === 'settings') {
+    return (
+      <div style={appShellStyle}>
+        <Nav onLogout={logout} showLogout={true} onNavigate={setPage} />
+
+        <div style={pageWrapperStyle}>
+          <div style={{ ...cardStyle, marginTop: 32, maxWidth: 640 }}>
+            <h2 style={sectionTitleStyle}>Account settings</h2>
+            <p style={subheadingStyle}>
+              Update your display name or delete your account and score
+              history.
+            </p>
+
+            {!profile ? (
+              <p style={{ fontSize: 14, color: '#6b7280', marginTop: 16 }}>
+                Loading your profile...
+              </p>
+            ) : (
+              <>
+                <div
+                  style={{
+                    display: 'grid',
+                    gap: 16,
+                    marginTop: 12,
+                    marginBottom: 12,
+                  }}
+                >
+                  <div>
+                    <div style={fieldLabelStyle}>Email</div>
+                    <div style={{ fontSize: 14, color: '#111827' }}>
+                      {profile.email}
+                    </div>
+                  </div>
+
+                  <form
+                    onSubmit={handleSaveName}
+                    style={{ display: 'grid', gap: 8 }}
+                  >
+                    <div style={{ display: 'grid', gap: 4 }}>
+                      <label style={fieldLabelStyle}>Display name</label>
+                      <input
+                        type="text"
+                        placeholder="How should we greet you?"
+                        value={profileNameInput}
+                        onChange={(e) => {
+                          setProfileNameInput(e.target.value);
+                          setProfileStatus('');
+                          setProfileError('');
+                        }}
+                        style={inputStyle}
+                      />
+                    </div>
+
+                    {profileError && (
+                      <div style={errorStyle}>{profileError}</div>
+                    )}
+                    {profileStatus && (
+                      <div style={successStyle}>{profileStatus}</div>
+                    )}
+
+                    <button type="submit" style={primaryButtonStyle}>
+                      Save changes
+                    </button>
+                  </form>
+                </div>
+
+                <hr
+                  style={{
+                    margin: '20px 0',
+                    border: 0,
+                    borderTop: '1px solid #e5e7eb',
+                  }}
+                />
+
+                <div style={{ marginTop: 4 }}>
+                  <div
+                    style={{
+                      fontSize: 13,
+                      fontWeight: 700,
+                      color: '#b91c1c',
+                      marginBottom: 6,
+                    }}
+                  >
+                    Danger zone
+                  </div>
+                  <p
+                    style={{
+                      fontSize: 13,
+                      color: '#6b7280',
+                      margin: 0,
+                      marginBottom: 10,
+                    }}
+                  >
+                    Deleting your account will remove your login and all stored
+                    quiz scores.
+                  </p>
+
+                  <button
+                    type="button"
+                    onClick={handleDeleteAccount}
+                    style={{
+                      ...primaryButtonStyle,
+                      background:
+                        'linear-gradient(135deg, #ef4444, #dc2626)',
+                      boxShadow: '0 10px 24px rgba(239, 68, 68, 0.45)',
+                    }}
+                  >
+                    Delete account
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
       </div>
     );
   }
@@ -298,34 +597,81 @@ export default function App() {
   // PICK PAGE
   // ============================================================
   if (stage === 'pick') {
-    if (cats.length === 0) loadCats(token);
+    if (cats.length === 0 && token) {
+      loadCats(token);
+    }
 
     return (
-      <div style={{ fontFamily: 'Trebuchet MS, sans-serif' }}>
+      <div style={appShellStyle}>
         <Nav onLogout={logout} showLogout={true} onNavigate={setPage} />
 
-        <div style={{ maxWidth: 700, margin: '20px auto', display: 'grid', gap: 12 }}>
-          <div>
-            <label>Category:&nbsp;</label>
-            <select value={category} onChange={e => setCategory(Number(e.target.value))}>
-              {cats.map(c => (
-                <option key={c.id} value={c.id}>
-                  {c.name}
-                </option>
-              ))}
-            </select>
-          </div>
+        <div style={pageWrapperStyle}>
+          <div style={{ ...cardStyle, marginTop: 32, maxWidth: 640 }}>
+            <h2 style={sectionTitleStyle}>Start a new quiz</h2>
+            <p style={subheadingStyle}>
+              Choose a category, difficulty and number of questions.
+            </p>
 
-          <div>
-            <label>Difficulty:&nbsp;</label>
-            <select value={difficulty} onChange={e => setDifficulty(e.target.value)}>
-              <option value="easy">Easy</option>
-              <option value="medium">Medium</option>
-              <option value="hard">Hard</option>
-            </select>
-          </div>
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+                gap: 16,
+                marginTop: 12,
+              }}
+            >
+              <div style={{ display: 'grid', gap: 4 }}>
+                <label style={fieldLabelStyle}>Category</label>
+                <select
+                  value={category}
+                  onChange={(e) => setCategory(Number(e.target.value))}
+                  style={{ ...inputStyle, cursor: 'pointer' }}
+                >
+                  {cats.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
 
-          <button onClick={start}>Start Quiz</button>
+              <div style={{ display: 'grid', gap: 4 }}>
+                <label style={fieldLabelStyle}>Difficulty</label>
+                <select
+                  value={difficulty}
+                  onChange={(e) => setDifficulty(e.target.value)}
+                  style={{ ...inputStyle, cursor: 'pointer' }}
+                >
+                  <option value="easy">Easy</option>
+                  <option value="medium">Medium</option>
+                  <option value="hard">Hard</option>
+                </select>
+              </div>
+
+              <div style={{ display: 'grid', gap: 4 }}>
+                <label style={fieldLabelStyle}>Number of questions</label>
+                <input
+                  type="range"
+                  min={5}
+                  max={20}
+                  step={5}
+                  value={questionCount}
+                  onChange={(e) => setQuestionCount(Number(e.target.value))}
+                />
+                <div style={{ fontSize: 12, color: '#6b7280' }}>
+                  {questionCount} questions
+                </div>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={start}
+              style={{ ...primaryButtonStyle, marginTop: 20 }}
+            >
+              Start quiz
+            </button>
+          </div>
         </div>
       </div>
     );
@@ -336,41 +682,77 @@ export default function App() {
   // ============================================================
   if (stage === 'play') {
     return (
-      <div style={{ fontFamily: 'Trebuchet MS, sans-serif' }}>
+      <div style={appShellStyle}>
         <Nav onLogout={logout} showLogout={true} onNavigate={setPage} />
 
-        <div style={{ maxWidth: 800, margin: '20px auto', display: 'grid', gap: 16 }}>
-          {items.map((q, i) => (
-            <div
-              key={i}
-              style={{ border: '1px solid #eee', borderRadius: 8, padding: 12 }}
-            >
-              <div style={{ fontWeight: 600 }}>
-                {i + 1}. {q.question}
-              </div>
+        <div style={pageWrapperStyle}>
+          <div style={{ ...cardStyle, marginTop: 32 }}>
+            <h2 style={sectionTitleStyle}>Answer the questions</h2>
+            <p style={subheadingStyle}>
+              Tap an option for each question, then submit to see your score.
+            </p>
 
-              <div style={{ display: 'grid', gap: 6, marginTop: 8 }}>
-                {q.options.map(opt => (
-                  <label
-                    key={opt}
-                    style={{ display: 'flex', gap: 8, alignItems: 'center' }}
+            <div style={{ display: 'grid', gap: 14, marginTop: 12 }}>
+              {items.map((q, i) => (
+                <div
+                  key={i}
+                  style={{
+                    borderRadius: 12,
+                    padding: '12px 12px 10px',
+                    border: '1px solid #e5e7eb',
+                    background: '#ffffff',
+                  }}
+                >
+                  <div
+                    style={{
+                      fontWeight: 600,
+                      marginBottom: 8,
+                      color: '#111827',
+                    }}
                   >
-                    <input
-                      type="radio"
-                      name={'q' + i}
-                      checked={answers[i] === opt}
-                      onChange={() => pick(i, opt)}
-                    />
-                    <span>{opt}</span>
-                  </label>
-                ))}
-              </div>
-            </div>
-          ))}
+                    {i + 1}. {q.question}
+                  </div>
 
-          <button onClick={submit} disabled={items.length === 0}>
-            Submit
-          </button>
+                  <div style={{ display: 'grid', gap: 6 }}>
+                    {q.options.map((opt) => (
+                      <label
+                        key={opt}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 8,
+                          fontSize: 14,
+                          cursor: 'pointer',
+                        }}
+                      >
+                        <input
+                          type="radio"
+                          name={'q' + i}
+                          checked={answers[i] === opt}
+                          onChange={() => pick(i, opt)}
+                        />
+                        <span>{opt}</span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <button
+              type="button"
+              onClick={submit}
+              disabled={items.length === 0}
+              style={{
+                ...primaryButtonStyle,
+                marginTop: 20,
+                opacity: items.length === 0 ? 0.6 : 1,
+                cursor: items.length === 0 ? 'default' : 'pointer',
+              }}
+            >
+              Submit answers
+            </button>
+          </div>
         </div>
       </div>
     );
@@ -380,16 +762,37 @@ export default function App() {
   // RESULT PAGE
   // ============================================================
   return (
-    <div style={{ fontFamily: 'Trebuchet MS, sans-serif' }}>
+    <div style={appShellStyle}>
       <Nav onLogout={logout} showLogout={true} onNavigate={setPage} />
 
-      <div style={{ maxWidth: 600, margin: '40px auto', textAlign: 'center' }}>
-        <h2>Result</h2>
-        <p>
-          You scored <strong>{score}</strong> / {items.length}
-        </p>
+      <div style={pageWrapperStyle}>
+        <div style={{ ...cardStyle, marginTop: 48, textAlign: 'center' }}>
+          <h2 style={sectionTitleStyle}>Result</h2>
+          <p style={{ fontSize: 16, marginBottom: 4 }}>
+            You scored{' '}
+            <span style={{ fontWeight: 800 }}>
+              {score} / {items.length}
+            </span>
+          </p>
+          <p style={{ fontSize: 13, color: '#6b7280', marginBottom: 20 }}>
+            Category:{' '}
+            <strong>
+              {cats.find((c) => String(c.id) === String(category))?.name ||
+                category}
+            </strong>{' '}
+            · Difficulty: <strong>{difficulty}</strong>
+          </p>
 
-        <button onClick={() => setStage('pick')}>Play again</button>
+          <button
+            type="button"
+            onClick={() => {
+              setStage('pick');
+            }}
+            style={primaryButtonStyle}
+          >
+            Play again
+          </button>
+        </div>
       </div>
     </div>
   );

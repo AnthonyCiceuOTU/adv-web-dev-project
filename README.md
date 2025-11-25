@@ -1,10 +1,6 @@
-# QuizMaster — CSCI 4230U Advanced Web Development Personal Project
+# QuizMaster — CSCI 4230U Advanced Web Development Project
 
 A full‑stack quiz app where users log in, pick a category & difficulty, answer questions pulled from **Open Trivia DB**, and save their scores.
-
-This project is designed to meet every requirement in the **CSCI 4230U Advanced Web Development** project PDF (API design & integration, architecture, auth, DB/ORM, tests including Selenium, Docker, CI/CD, deploy/HTTPS notes, performance via PageSpeed, etc.).
-
-## Quickstart (no Docker)
 
 ### Backend (FastAPI)
 ```powershell

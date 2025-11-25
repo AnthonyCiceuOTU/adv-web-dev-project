@@ -1,31 +1,48 @@
 from pydantic import BaseModel
-from typing import List
+from typing import List, Optional
+
 
 class LoginIn(BaseModel):
     email: str
     password: str
 
+
 class TokenOut(BaseModel):
     access_token: str
     token_type: str = "bearer"
 
+
+# New: used for /auth/me
+class UserProfile(BaseModel):
+    email: str
+    name: Optional[str] = None
+
+
+class UserUpdate(BaseModel):
+    name: str
+
+
 class Category(BaseModel):
     id: int
     name: str
+
 
 class Question(BaseModel):
     question: str
     correct_answer: str
     incorrect_answers: List[str]
 
+
 class StartOut(BaseModel):
     items: List[Question]
+
 
 class SubmitIn(BaseModel):
     total: int
     correct: int
     category: str
     difficulty: str
+
 
 class ScoreOut(BaseModel):
     id: int

@@ -1,19 +1,30 @@
+from typing import Optional
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 from sqlalchemy import String, ForeignKey, Integer, DateTime
 from datetime import datetime
 
+
 class Base(DeclarativeBase):
     pass
 
+
 class User(Base):
     __tablename__ = "users"
+
     id: Mapped[int] = mapped_column(primary_key=True)
     email: Mapped[str] = mapped_column(String(255), unique=True, index=True)
     password: Mapped[str] = mapped_column(String(255))
-    attempts: Mapped[list["Attempt"]] = relationship(back_populates="user", cascade="all, delete-orphan")
+    # New: optional display name for settings page
+    name: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
+    attempts: Mapped[list["Attempt"]] = relationship(
+        back_populates="user",
+        cascade="all, delete-orphan",
+    )
+
 
 class Attempt(Base):
     __tablename__ = "attempts"
+
     id: Mapped[int] = mapped_column(primary_key=True)
     total: Mapped[int] = mapped_column(Integer)
     correct: Mapped[int] = mapped_column(Integer)

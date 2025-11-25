@@ -1,3 +1,6 @@
+import os
+from google.oauth2 import id_token as google_id_token
+from google.auth.transport import requests as google_requests
 from fastapi import APIRouter, HTTPException, Depends, Response
 from sqlalchemy.orm import Session
 from app.core.security import (
@@ -10,7 +13,7 @@ from app.db.schemas import LoginIn, TokenOut, UserProfile, UserUpdate
 from app.db.models import User
 from app.db.session import SessionLocal
 
-
+GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID")
 router = APIRouter()
 
 
@@ -58,6 +61,51 @@ def login(body: LoginIn, db: Session = Depends(get_db)):
     return TokenOut(
         access_token=create_access_token({"sub": body.email})
     )
+
+@router.post("/google", response_model=TokenOut)
+def login_with_google(payload: dict, db: Session = Depends(get_db)):
+    """
+    Frontend sends: { "id_token": "<google id_token>" }
+    We verify the token with Google, extract email/name, create user if needed,
+    and return our own JWT (TokenOut).
+    """
+    id_token = payload.get("id_token")
+    if not id_token:
+        raise HTTPException(status_code=400, detail="Missing id_token")
+
+    try:
+        # Verify token and get claims
+        claims = google_id_token.verify_oauth2_token(id_token, google_requests.Request(), GOOGLE_CLIENT_ID)
+        # claims will contain 'email', 'email_verified', 'name', 'picture', etc.
+    except ValueError as e:
+        raise HTTPException(status_code=401, detail=f"Invalid Google token: {e}")
+
+    # Require email_verified to be true (optional but recommended)
+    if not claims.get("email_verified"):
+        raise HTTPException(status_code=401, detail="Google account email not verified")
+
+    email = claims.get("email")
+    name = claims.get("name") or email.split("@")[0]
+
+    # Find or create user
+    user = db.query(User).filter(User.email == email).first()
+    if not user:
+        # create a user without password (OAuth-only)
+        user = User(email=email, password="", name=name)
+        db.add(user)
+        db.commit()
+        db.refresh(user)
+    else:
+        # keep name in sync if not set
+        if not user.name and name:
+            user.name = name
+            db.add(user)
+            db.commit()
+            db.refresh(user)
+
+    # Return JWT token for our app (sub = email)
+    token = create_access_token({"sub": email})
+    return TokenOut(access_token=token)
 
 
 @router.get("/me", response_model=UserProfile)

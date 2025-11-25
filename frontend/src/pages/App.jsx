@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { api } from '../api';
 import Nav from '../components/Nav';
 import Scores from '../components/Scores';
@@ -11,7 +11,7 @@ function shuffle(arr) {
     .map((o) => o.v);
 }
 
-// -------- Shared Styles (simple inline design system) --------
+// -------- Shared Styles --------
 const appShellStyle = {
   fontFamily:
     'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
@@ -20,17 +20,8 @@ const appShellStyle = {
     'radial-gradient(circle at top left, #e0f2fe 0, #eef2ff 40%, #f9fafb 100%)',
   padding: '18px 12px 32px',
 };
-
-const pageWrapperStyle = {
-  maxWidth: 960,
-  margin: '0 auto',
-};
-
-const authCardWrapperStyle = {
-  maxWidth: 420,
-  margin: '40px auto',
-};
-
+const pageWrapperStyle = { maxWidth: 960, margin: '0 auto' };
+const authCardWrapperStyle = { maxWidth: 420, margin: '40px auto' };
 const cardStyle = {
   background: 'white',
   borderRadius: 18,
@@ -38,35 +29,10 @@ const cardStyle = {
   boxShadow: '0 18px 40px rgba(15, 23, 42, 0.18)',
   border: '1px solid rgba(148, 163, 184, 0.22)',
 };
-
-const headingStyle = {
-  margin: 0,
-  fontSize: 26,
-  fontWeight: 800,
-  color: '#0f172a',
-};
-
-const subheadingStyle = {
-  margin: '4px 0 16px',
-  fontSize: 13,
-  color: '#6b7280',
-};
-
-const fieldLabelStyle = {
-  fontSize: 13,
-  fontWeight: 600,
-  color: '#4b5563',
-  marginBottom: 4,
-};
-
-const inputStyle = {
-  padding: '9px 11px',
-  borderRadius: 10,
-  border: '1px solid #d1d5db',
-  fontSize: 14,
-  outline: 'none',
-};
-
+const headingStyle = { margin: 0, fontSize: 26, fontWeight: 800, color: '#0f172a' };
+const subheadingStyle = { margin: '4px 0 16px', fontSize: 13, color: '#6b7280' };
+const fieldLabelStyle = { fontSize: 13, fontWeight: 600, color: '#4b5563', marginBottom: 4 };
+const inputStyle = { padding: '9px 11px', borderRadius: 10, border: '1px solid #d1d5db', fontSize: 14, outline: 'none' };
 const primaryButtonStyle = {
   marginTop: 8,
   background: 'linear-gradient(135deg, #4f46e5, #6366f1)',
@@ -79,47 +45,43 @@ const primaryButtonStyle = {
   fontSize: 14,
   boxShadow: '0 10px 24px rgba(79, 70, 229, 0.4)',
 };
+const secondaryButtonStyle = { background: 'transparent', border: 'none', padding: 0, margin: 0, color: '#4f46e5', fontWeight: 600, cursor: 'pointer' };
+const errorStyle = { marginTop: 8, marginBottom: 4, fontSize: 13, color: '#b91c1c' };
+const successStyle = { marginTop: 8, marginBottom: 4, fontSize: 13, color: '#15803d' };
+const sectionTitleStyle = { margin: '0 0 12px', fontSize: 20, fontWeight: 700, color: '#111827' };
 
-const secondaryButtonStyle = {
-  background: 'transparent',
-  border: 'none',
-  padding: 0,
-  margin: 0,
-  color: '#4f46e5',
-  fontWeight: 600,
-  cursor: 'pointer',
-};
+// -------- Google Login Component --------
+function GoogleLogin({ onLogin, token }) {
+  const divRef = useRef(null);
 
-const errorStyle = {
-  marginTop: 8,
-  marginBottom: 4,
-  fontSize: 13,
-  color: '#b91c1c',
-};
+  useEffect(() => {
+    if (!window.google || token) return;
 
-const successStyle = {
-  marginTop: 8,
-  marginBottom: 4,
-  fontSize: 13,
-  color: '#15803d',
-};
+    window.google.accounts.id.initialize({
+      client_id: import.meta.env.VITE_GOOGLE_CLIENT_ID,
+      callback: (res) => {
+        onLogin(res.credential);
+      },
+    });
 
-const sectionTitleStyle = {
-  margin: '0 0 12px',
-  fontSize: 20,
-  fontWeight: 700,
-  color: '#111827',
-};
+    window.google.accounts.id.renderButton(divRef.current, {
+      theme: 'outline',
+      size: 'large',
+      shape: 'rectangular',
+    });
+  }, [token, onLogin]);
 
+  return <div ref={divRef}></div>;
+}
+
+// -------- Main App --------
 export default function App() {
   // ------------------- STATE -------------------
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-
   const [loginError, setLoginError] = useState('');
   const [signupError, setSignupError] = useState('');
   const [showSignup, setShowSignup] = useState(false);
-
   const [token, setToken] = useState(localStorage.getItem('token') || '');
   const [cats, setCats] = useState([]);
   const [category, setCategory] = useState(9);
@@ -140,7 +102,7 @@ export default function App() {
   const [emailStatus, setEmailStatus] = useState('');
   const [emailError, setEmailError] = useState('');
 
-  // Whenever we get/set a token, hydrate categories + profile
+  // ------------------- EFFECTS -------------------
   useEffect(() => {
     if (!token) {
       setProfile(null);
@@ -150,64 +112,70 @@ export default function App() {
     loadProfile(token);
   }, [token]);
 
-  // ------------------- LOGIN -------------------
+  // ------------------- API CALLS -------------------
   async function login(e) {
     e.preventDefault();
     setLoginError('');
-
     if (!email.trim() || !password.trim()) {
       setLoginError('Email and password cannot be empty.');
       return;
     }
-
     try {
       const { access_token } = await api('/auth/login', {
         method: 'POST',
         body: JSON.stringify({ email, password }),
       });
-
       localStorage.setItem('token', access_token);
       setToken(access_token);
       setStage('pick');
       setPage('home');
       setPassword('');
-    } catch (err) {
+    } catch {
       setLoginError('Incorrect email or password.');
     }
   }
 
-  // ------------------- SIGN UP -------------------
   async function registerUser(e) {
     e.preventDefault();
     setSignupError('');
-
     if (!email.trim() || !password.trim()) {
       setSignupError('Email and password cannot be empty.');
       return;
     }
-
     try {
       const { access_token } = await api('/auth/register', {
         method: 'POST',
         body: JSON.stringify({ email, password }),
       });
-
       localStorage.setItem('token', access_token);
       setToken(access_token);
       setStage('pick');
       setPage('home');
       setPassword('');
-    } catch (err) {
+    } catch {
       setSignupError('Email is already in use.');
     }
   }
 
-  // ------------------- CATEGORY / PROFILE LOADING -------------------
+  async function handleGoogleLogin(credential) {
+  try {
+    const { access_token } = await api('/auth/google', {
+      method: 'POST',
+      body: JSON.stringify({ id_token: credential }),
+    });
+    localStorage.setItem('token', access_token);
+    setToken(access_token);
+    setStage('pick');
+    setPage('home');
+  } catch (err) {
+    console.error('Google login failed', err);
+    setLoginError('Google login failed.');
+  }
+}
+
   async function loadCats(tok) {
     try {
-      const c = await api('/quiz/categories', {
-        headers: { Authorization: 'Bearer ' + tok },
-      });
+      const c = await api('/quiz/categories', { headers: { Authorization: 'Bearer ' + tok } });
       setCats(c);
     } catch {
       setCats([]);
@@ -216,9 +184,7 @@ export default function App() {
 
   async function loadProfile(tok) {
     try {
-      const me = await api('/auth/me', {
-        headers: { Authorization: 'Bearer ' + tok },
-      });
+      const me = await api('/auth/me', { headers: { Authorization: 'Bearer ' + tok } });
       setProfile(me);
       setProfileNameInput(me.name || '');
       setProfileEmailInput(me.email || '');
@@ -228,7 +194,6 @@ export default function App() {
     }
   }
 
-  // ------------------- LOGOUT -------------------
   function logout() {
     localStorage.removeItem('token');
     setToken('');
@@ -239,7 +204,7 @@ export default function App() {
     setProfileNameInput('');
   }
 
-  // ------------------- QUIZ START -------------------
+  // Quiz actions
   async function start() {
     const data = await api(
       `/quiz/start?category=${category}&difficulty=${difficulty}&amount=${questionCount}`,
@@ -250,48 +215,31 @@ export default function App() {
       ...q,
       options: shuffle([q.correct_answer, ...q.incorrect_answers]),
     }));
-
     setItems(enriched);
     setAnswers({});
     setStage('play');
   }
 
   function pick(idx, opt) {
-    setAnswers((prev) => ({
-      ...prev,
-      [idx]: opt,
-    }));
+    setAnswers((prev) => ({ ...prev, [idx]: opt }));
   }
 
-  // ------------------- SUBMIT QUIZ -------------------
   async function submit() {
-    const correct = items.reduce(
-      (acc, q, i) => acc + (answers[i] === q.correct_answer ? 1 : 0),
-      0,
-    );
-
+    const correct = items.reduce((acc, q, i) => acc + (answers[i] === q.correct_answer ? 1 : 0), 0);
     setScore(correct);
-
     await api('/scores', {
       method: 'POST',
       headers: { Authorization: 'Bearer ' + token },
-      body: JSON.stringify({
-        total: items.length,
-        correct,
-        category: String(category),
-        difficulty,
-      }),
+      body: JSON.stringify({ total: items.length, correct, category: String(category), difficulty }),
     });
-
     setStage('result');
   }
 
-  // ------------------- SETTINGS ACTIONS -------------------
+  // Settings actions
   async function handleSaveName(e) {
     e.preventDefault();
     setProfileStatus('');
     setProfileError('');
-
     try {
       const updated = await api('/auth/me', {
         method: 'PATCH',
@@ -300,119 +248,74 @@ export default function App() {
       });
       setProfile(updated);
       setProfileStatus('Display name updated.');
-    } catch (err) {
-      setProfileError('Could not update name. Please try again.');
+    } catch {
+      setProfileError('Could not update name.');
     }
   }
 
   async function handleSaveEmail(e) {
-  e.preventDefault();
-  setEmailStatus('');
-  setEmailError('');
-
-  try {
-    const updated = await api('/auth/me', {
-      method: 'PATCH',
-      headers: { Authorization: 'Bearer ' + token },
-      body: JSON.stringify({ email: profileEmailInput }),
-    });
-
-    setProfile(updated);
-    setEmailStatus('Email updated.');
-  } catch (err) {
-    setEmailError('Could not update email. It may already be in use.');
+    e.preventDefault();
+    setEmailStatus('');
+    setEmailError('');
+    try {
+      const updated = await api('/auth/me', {
+        method: 'PATCH',
+        headers: { Authorization: 'Bearer ' + token },
+        body: JSON.stringify({ email: profileEmailInput }),
+      });
+      setProfile(updated);
+      setEmailStatus('Email updated.');
+    } catch {
+      setEmailError('Could not update email.');
+    }
   }
-}
 
   async function handleDeleteAccount() {
-    if (
-      !window.confirm(
-        'Delete your account and all scores? This cannot be undone.',
-      )
-    ) {
-      return;
-    }
-
+    if (!window.confirm('Delete your account and all scores? This cannot be undone.')) return;
     try {
-      await api('/auth/me', {
-        method: 'DELETE',
-        headers: { Authorization: 'Bearer ' + token },
-      });
-      // Full logout once account is gone
+      await api('/auth/me', { method: 'DELETE', headers: { Authorization: 'Bearer ' + token } });
       logout();
-    } catch (err) {
-      setProfileError('Could not delete account. Please try again.');
+    } catch {
+      setProfileError('Could not delete account.');
     }
   }
 
-  // ============================================================
+  // ------------------- RENDER -------------------
+
   // LOGIN / SIGNUP
-  // ============================================================
   if (!token || stage === 'login') {
     return (
       <div style={appShellStyle}>
         <Nav showLogout={false} onNavigate={setPage} />
-
         <div style={authCardWrapperStyle}>
           <div style={cardStyle}>
             <h1 style={headingStyle}>QuizMaster</h1>
-            <p style={subheadingStyle}>
-              Log in or create an account to save your trivia scores.
-            </p>
+            <p style={subheadingStyle}>Log in or create an account to save your trivia scores.</p>
 
             {!showSignup ? (
               <>
                 <h2 style={sectionTitleStyle}>Sign in</h2>
-
                 {loginError && <div style={errorStyle}>{loginError}</div>}
 
-                <form
-                  onSubmit={login}
-                  style={{ display: 'grid', gap: 10, marginTop: 8 }}
-                >
+                <form onSubmit={login} style={{ display: 'grid', gap: 10, marginTop: 8 }}>
                   <div style={{ display: 'grid', gap: 4 }}>
                     <label style={fieldLabelStyle}>Email</label>
-                    <input
-                      placeholder="you@example.com"
-                      type="email"
-                      value={email}
-                      onChange={(e) => {
-                        setEmail(e.target.value);
-                        setLoginError('');
-                      }}
-                      style={inputStyle}
-                    />
+                    <input type="email" placeholder="you@example.com" value={email} onChange={(e) => { setEmail(e.target.value); setLoginError(''); }} style={inputStyle} />
                   </div>
-
                   <div style={{ display: 'grid', gap: 4 }}>
                     <label style={fieldLabelStyle}>Password</label>
-                    <input
-                      placeholder="••••••••"
-                      type="password"
-                      value={password}
-                      onChange={(e) => {
-                        setPassword(e.target.value);
-                        setLoginError('');
-                      }}
-                      style={inputStyle}
-                    />
+                    <input type="password" placeholder="••••••••" value={password} onChange={(e) => { setPassword(e.target.value); setLoginError(''); }} style={inputStyle} />
                   </div>
-
-                  <button type="submit" style={primaryButtonStyle}>
-                    Sign in
-                  </button>
+                  <button type="submit" style={primaryButtonStyle}>Sign in</button>
                 </form>
+
+                <div style={{ marginTop: 12 }}>
+                  <GoogleLogin onLogin={handleGoogleLogin} token={token} />
+                </div>
 
                 <p style={{ marginTop: 16, fontSize: 13 }}>
                   Need an account?{' '}
-                  <button
-                    type="button"
-                    style={secondaryButtonStyle}
-                    onClick={() => {
-                      setShowSignup(true);
-                      setSignupError('');
-                    }}
-                  >
+                  <button type="button" style={secondaryButtonStyle} onClick={() => { setShowSignup(true); setSignupError(''); }}>
                     Create one
                   </button>
                 </p>
@@ -420,56 +323,22 @@ export default function App() {
             ) : (
               <>
                 <h2 style={sectionTitleStyle}>Create account</h2>
-
                 {signupError && <div style={errorStyle}>{signupError}</div>}
-
-                <form
-                  onSubmit={registerUser}
-                  style={{ display: 'grid', gap: 10, marginTop: 8 }}
-                >
+                <form onSubmit={registerUser} style={{ display: 'grid', gap: 10, marginTop: 8 }}>
                   <div style={{ display: 'grid', gap: 4 }}>
                     <label style={fieldLabelStyle}>Email</label>
-                    <input
-                      placeholder="you@example.com"
-                      type="email"
-                      value={email}
-                      onChange={(e) => {
-                        setEmail(e.target.value);
-                        setSignupError('');
-                      }}
-                      style={inputStyle}
-                    />
+                    <input type="email" placeholder="you@example.com" value={email} onChange={(e) => { setEmail(e.target.value); setSignupError(''); }} style={inputStyle} />
                   </div>
-
                   <div style={{ display: 'grid', gap: 4 }}>
                     <label style={fieldLabelStyle}>Password</label>
-                    <input
-                      placeholder="Choose a password"
-                      type="password"
-                      value={password}
-                      onChange={(e) => {
-                        setPassword(e.target.value);
-                        setSignupError('');
-                      }}
-                      style={inputStyle}
-                    />
+                    <input type="password" placeholder="Choose a password" value={password} onChange={(e) => { setPassword(e.target.value); setSignupError(''); }} style={inputStyle} />
                   </div>
-
-                  <button type="submit" style={primaryButtonStyle}>
-                    Create account
-                  </button>
+                  <button type="submit" style={primaryButtonStyle}>Create account</button>
                 </form>
 
                 <p style={{ marginTop: 16, fontSize: 13 }}>
                   Already have an account?{' '}
-                  <button
-                    type="button"
-                    style={secondaryButtonStyle}
-                    onClick={() => {
-                      setShowSignup(false);
-                      setSignupError('');
-                    }}
-                  >
+                  <button type="button" style={secondaryButtonStyle} onClick={() => { setShowSignup(false); setSignupError(''); }}>
                     Sign in
                   </button>
                 </p>
@@ -480,6 +349,7 @@ export default function App() {
       </div>
     );
   }
+
 
   // ============================================================
   // SCORES PAGE

@@ -136,6 +136,9 @@ export default function App() {
   const [profileNameInput, setProfileNameInput] = useState('');
   const [profileStatus, setProfileStatus] = useState('');
   const [profileError, setProfileError] = useState('');
+  const [profileEmailInput, setProfileEmailInput] = useState('');
+  const [emailStatus, setEmailStatus] = useState('');
+  const [emailError, setEmailError] = useState('');
 
   // Whenever we get/set a token, hydrate categories + profile
   useEffect(() => {
@@ -218,6 +221,7 @@ export default function App() {
       });
       setProfile(me);
       setProfileNameInput(me.name || '');
+      setProfileEmailInput(me.email || '');
     } catch {
       setProfile(null);
       setProfileNameInput('');
@@ -300,6 +304,25 @@ export default function App() {
       setProfileError('Could not update name. Please try again.');
     }
   }
+
+  async function handleSaveEmail(e) {
+  e.preventDefault();
+  setEmailStatus('');
+  setEmailError('');
+
+  try {
+    const updated = await api('/auth/me', {
+      method: 'PATCH',
+      headers: { Authorization: 'Bearer ' + token },
+      body: JSON.stringify({ email: profileEmailInput }),
+    });
+
+    setProfile(updated);
+    setEmailStatus('Email updated.');
+  } catch (err) {
+    setEmailError('Could not update email. It may already be in use.');
+  }
+}
 
   async function handleDeleteAccount() {
     if (
@@ -472,126 +495,147 @@ export default function App() {
     );
   }
 
-  // ============================================================
-  // SETTINGS PAGE
-  // ============================================================
-  if (page === 'settings') {
-    return (
-      <div style={appShellStyle}>
-        <Nav onLogout={logout} showLogout={true} onNavigate={setPage} />
+// ============================================================
+// SETTINGS PAGE
+// ============================================================
+if (page === 'settings') {
+  return (
+    <div style={appShellStyle}>
+      <Nav onLogout={logout} showLogout={true} onNavigate={setPage} />
 
-        <div style={pageWrapperStyle}>
-          <div style={{ ...cardStyle, marginTop: 32, maxWidth: 640 }}>
-            <h2 style={sectionTitleStyle}>Account settings</h2>
-            <p style={subheadingStyle}>
-              Update your display name or delete your account and score
-              history.
+      <div style={pageWrapperStyle}>
+        <div style={{ ...cardStyle, marginTop: 32, maxWidth: 640 }}>
+          <h2 style={sectionTitleStyle}>Account settings</h2>
+          <p style={subheadingStyle}>
+            Update your display name, email, or delete your account.
+          </p>
+
+          {!profile ? (
+            <p style={{ fontSize: 14, color: '#6b7280', marginTop: 16 }}>
+              Loading your profile...
             </p>
+          ) : (
+            <>
+              {/* Email Section */}
+              <div style={{ marginTop: 16 }}>
+                <form
+                  onSubmit={handleSaveEmail}
+                  style={{ display: "grid", gap: 8 }}
+                >
+                  <label style={fieldLabelStyle}>Email</label>
+                  <input
+                    type="email"
+                    value={profileEmailInput}
+                    onChange={(e) => {
+                      setProfileEmailInput(e.target.value);
+                      setEmailStatus("");
+                      setEmailError("");
+                    }}
+                    style={inputStyle}
+                  />
 
-            {!profile ? (
-              <p style={{ fontSize: 14, color: '#6b7280', marginTop: 16 }}>
-                Loading your profile...
-              </p>
-            ) : (
-              <>
+                  {emailError && <div style={errorStyle}>{emailError}</div>}
+                  {emailStatus && <div style={successStyle}>{emailStatus}</div>}
+
+                  <button type="submit" style={primaryButtonStyle}>
+                    Save email
+                  </button>
+                </form>
+              </div>
+
+              <hr
+                style={{
+                  margin: "20px 0",
+                  border: 0,
+                  borderTop: "1px solid #e5e7eb",
+                }}
+              />
+
+              {/* Display name section */}
+              <div style={{ marginTop: 4 }}>
+                <form
+                  onSubmit={handleSaveName}
+                  style={{ display: "grid", gap: 8 }}
+                >
+                  <label style={fieldLabelStyle}>Display name</label>
+                  <input
+                    type="text"
+                    placeholder="How should we greet you?"
+                    value={profileNameInput}
+                    onChange={(e) => {
+                      setProfileNameInput(e.target.value);
+                      setProfileStatus("");
+                      setProfileError("");
+                    }}
+                    style={inputStyle}
+                  />
+
+                  {profileError && (
+                    <div style={errorStyle}>{profileError}</div>
+                  )}
+                  {profileStatus && (
+                    <div style={successStyle}>{profileStatus}</div>
+                  )}
+
+                  <button type="submit" style={primaryButtonStyle}>
+                    Save display name
+                  </button>
+                </form>
+              </div>
+
+              <hr
+                style={{
+                  margin: "20px 0",
+                  border: 0,
+                  borderTop: "1px solid #e5e7eb",
+                }}
+              />
+
+              {/* Danger zone */}
+              <div style={{ marginTop: 4 }}>
                 <div
                   style={{
-                    display: 'grid',
-                    gap: 16,
-                    marginTop: 12,
-                    marginBottom: 12,
+                    fontSize: 13,
+                    fontWeight: 700,
+                    color: "#b91c1c",
+                    marginBottom: 6,
                   }}
                 >
-                  <div>
-                    <div style={fieldLabelStyle}>Email</div>
-                    <div style={{ fontSize: 14, color: '#111827' }}>
-                      {profile.email}
-                    </div>
-                  </div>
-
-                  <form
-                    onSubmit={handleSaveName}
-                    style={{ display: 'grid', gap: 8 }}
-                  >
-                    <div style={{ display: 'grid', gap: 4 }}>
-                      <label style={fieldLabelStyle}>Display name</label>
-                      <input
-                        type="text"
-                        placeholder="How should we greet you?"
-                        value={profileNameInput}
-                        onChange={(e) => {
-                          setProfileNameInput(e.target.value);
-                          setProfileStatus('');
-                          setProfileError('');
-                        }}
-                        style={inputStyle}
-                      />
-                    </div>
-
-                    {profileError && (
-                      <div style={errorStyle}>{profileError}</div>
-                    )}
-                    {profileStatus && (
-                      <div style={successStyle}>{profileStatus}</div>
-                    )}
-
-                    <button type="submit" style={primaryButtonStyle}>
-                      Save changes
-                    </button>
-                  </form>
+                  Danger zone
                 </div>
 
-                <hr
+                <p
                   style={{
-                    margin: '20px 0',
-                    border: 0,
-                    borderTop: '1px solid #e5e7eb',
+                    fontSize: 13,
+                    color: "#6b7280",
+                    margin: 0,
+                    marginBottom: 10,
                   }}
-                />
+                >
+                  Deleting your account will remove your login and all stored
+                  quiz scores. This cannot be undone.
+                </p>
 
-                <div style={{ marginTop: 4 }}>
-                  <div
-                    style={{
-                      fontSize: 13,
-                      fontWeight: 700,
-                      color: '#b91c1c',
-                      marginBottom: 6,
-                    }}
-                  >
-                    Danger zone
-                  </div>
-                  <p
-                    style={{
-                      fontSize: 13,
-                      color: '#6b7280',
-                      margin: 0,
-                      marginBottom: 10,
-                    }}
-                  >
-                    Deleting your account will remove your login and all stored
-                    quiz scores.
-                  </p>
-
-                  <button
-                    type="button"
-                    onClick={handleDeleteAccount}
-                    style={{
-                      ...primaryButtonStyle,
-                      background:
-                        'linear-gradient(135deg, #ef4444, #dc2626)',
-                      boxShadow: '0 10px 24px rgba(239, 68, 68, 0.45)',
-                    }}
-                  >
-                    Delete account
-                  </button>
-                </div>
-              </>
-            )}
-          </div>
+                <button
+                  type="button"
+                  onClick={handleDeleteAccount}
+                  style={{
+                    ...primaryButtonStyle,
+                    background:
+                      "linear-gradient(135deg, #ef4444, #dc2626)",
+                    boxShadow: "0 10px 24px rgba(239, 68, 68, 0.45)",
+                  }}
+                >
+                  Delete account
+                </button>
+              </div>
+            </>
+          )}
         </div>
       </div>
-    );
-  }
+    </div>
+  );
+}
 
   // ============================================================
   // PICK PAGE

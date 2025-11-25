@@ -78,8 +78,18 @@ def update_me(
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
-    new_name = body.name.strip()
-    user.name = new_name or None
+    # Update name
+    if body.name is not None:
+        user.name = body.name.strip()
+
+    # Update email
+    if body.email is not None:
+        # Check if email already exists
+        existing = db.query(User).filter(User.email == body.email).first()
+        if existing and existing.id != user.id:
+            raise HTTPException(status_code=400, detail="Email already in use")
+
+        user.email = body.email
 
     db.add(user)
     db.commit()

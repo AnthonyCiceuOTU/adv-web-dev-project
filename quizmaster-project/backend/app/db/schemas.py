@@ -19,7 +19,8 @@ class UserProfile(BaseModel):
 
 
 class UserUpdate(BaseModel):
-    name: str
+    name: Optional[str] = None
+    email: Optional[str] = None
 
 
 class Category(BaseModel):

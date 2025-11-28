@@ -3,12 +3,13 @@
 A full‑stack quiz app where users log in, pick a category & difficulty, answer questions pulled from **Open Trivia DB**, and save their scores.
 
 ### Backend (FastAPI)
+Requires python version 3.11 installed 
 ```powershell
 cd quizmaster-project
 cd backend
 py -3.11 -m venv .venv
 .\venv\Scripts\Activate
-pip install -e .
+python -m pip install -r requirements.txt
 uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 ```
 - API: http://localhost:8000

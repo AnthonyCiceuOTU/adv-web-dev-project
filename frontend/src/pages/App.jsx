@@ -271,14 +271,41 @@ export default function App() {
   }
 
   async function handleDeleteAccount() {
-    if (!window.confirm('Delete your account and all scores? This cannot be undone.')) return;
-    try {
-      await api('/auth/me', { method: 'DELETE', headers: { Authorization: 'Bearer ' + token } });
-      logout();
-    } catch {
-      setProfileError('Could not delete account.');
+  if (!window.confirm('Delete your account and all scores? This cannot be undone.')) return;
+
+  setProfileError(''); // clear previous error
+
+  try {
+    const res = await fetch('http://localhost:8000/auth/me', {
+      method: 'DELETE',
+      headers: { Authorization: 'Bearer ' + token },
+    });
+
+    if (!res.ok && res.status !== 204) {
+      // Attempt to parse error from backend
+      let data;
+      try {
+        data = await res.json();
+      } catch {}
+      throw new Error(data?.message || `Request failed with status ${res.status}`);
     }
+
+    // Successfully deleted, clear all state
+    localStorage.removeItem('token');
+    setToken('');
+    setStage('login');
+    setPage('home');
+    setProfile(null);
+    setProfileNameInput('');
+    setProfileEmailInput('');
+    setProfileStatus('');
+    setEmailStatus('');
+    setEmailError('');
+  } catch (err) {
+    console.error('Delete failed:', err);
+    setProfileError('Could not delete account.');
   }
+}
 
   // ------------------- RENDER -------------------
 

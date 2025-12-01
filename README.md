@@ -2,6 +2,8 @@
 
 A full‑stack quiz app where users log in, pick a category & difficulty, answer questions pulled from **Open Trivia DB**, and save their scores.
 
+## How to run Manually
+
 ### Backend (FastAPI)
 Requires python version 3.11 installed 
 ```powershell
@@ -13,8 +15,7 @@ python -m pip install -r requirements.txt
 uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 ```
 - API: http://localhost:8000
-- Docs: http://localhost:8000/docs
-- Demo login: `demo@user.com` / `demo`
+- Demo login: `test@Otech.com` / `test`
 
 ### Frontend (React + Vite)
 ```powershell
@@ -24,30 +25,60 @@ npm run dev
 ```
 - Frontend: http://localhost:5173
 
-## Docker (to satisfy deliverables)
+
+## How to run using Docker
 ```bash
 docker compose up --build
 ```
 - Frontend: http://localhost:5173
 - Backend: http://localhost:8000
 
-## API (overview)
-- `POST /auth/login` → JWT
-- `GET  /quiz/categories` → from external API (Open Trivia DB)
-- `GET  /quiz/start?category=9&difficulty=easy&amount=10` → normalized questions
-- `POST /quiz/submit` → save score `{ total, correct, category, difficulty }`
-- `GET  /scores` → list of attempts for the user
+## 📘 API Endpoint Reference
+
+### 🔐 Authentication Endpoints
+
+| Method | Endpoint     | Auth | Body                        | Description                                           |
+|--------|--------------|------|-----------------------------|-------------------------------------------------------|
+| **POST** | `/register` | ❌    | `LoginIn`                   | Register a new user. Returns JWT.                     |
+| **POST** | `/login`    | ❌    | `LoginIn`                   | Log in with email/password. Returns JWT.              |
+| **POST** | `/google`   | ❌    | `{ "id_token": "string" }` | Log in via Google OAuth. Creates user if missing.     |
+
+---
+
+### 👤 User Endpoints
+
+| Method | Endpoint | Auth | Body         | Description                                 |
+|--------|----------|------|--------------|---------------------------------------------|
+| **GET** | `/me`    | ✅    | None         | Returns current user's profile.             |
+| **PATCH** | `/me`  | ✅    | `UserUpdate` | Update current user’s name or email.        |
+| **DELETE** | `/me` | ✅    | None         | Delete the authenticated user account.      |
+
+---
+
+### 🎮 Trivia Endpoints
+
+| Method | Endpoint        | Auth | Parameters                                   | Description                                  |
+|--------|------------------|------|------------------------------------------------|----------------------------------------------|
+| **GET** | `/categories`   | ✅    | None                                           | Fetch trivia categories from external API.   |
+| **GET** | `/start`        | ✅    | `category`, `difficulty`, `amount`             | Fetch trivia questions from external API.    |
+
+---
+
+### 🏆 Score Endpoints
+
+Base path: `/scores`
+
+| Method | Endpoint     | Auth | Body / Query | Description                               |
+|--------|--------------|------|--------------|-------------------------------------------|
+| **POST** | `/scores`  | ✅    | `SubmitIn`   | Save a user score after completing a quiz.|
+| **GET**  | `/scores`  | ✅    | None         | List all quiz attempts for the user.      |
+
+---
+
 
 ## Testing
-- `cd backend && pytest -q` (unit/integration)
-- Selenium E2E script at `tests/e2e/test_e2e.py`
-
-## Deployment (high level)
-- Push to GitHub (public repo).
-- Deploy backend Docker image to Render/Fly.io.
-- Deploy frontend to Netlify/Vercel (or Docker host).
-- Put Cloudflare in front for HTTPS/HTTP2.
-- Record PageSpeed results in README.
-
-## License
-MIT
+### Selenium Base
+- `cd backend`
+- Make sure to have venv activated
+- Make sure frontend and backend are running on separate terminals
+- Selenium Base Tests `pytest tests/selenium_tests.py`

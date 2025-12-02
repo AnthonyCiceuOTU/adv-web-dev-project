@@ -23,19 +23,19 @@ cd frontend
 npm install
 npm run dev
 ```
-- Frontend: http://localhost:5173
+- Frontend: http://localhost:5174
 
 
 ## How to run using Docker
 ```bash
 docker compose up --build
 ```
-- Frontend: http://localhost:5173
+- Frontend: http://localhost:5174
 - Backend: http://localhost:8000
 
-## 📘 API Endpoint Reference
+## API Endpoint Reference
 
-### 🔐 Authentication Endpoints
+### Authentication Endpoints
 
 | Method | Endpoint     | Auth | Body                        | Description                                           |
 |--------|--------------|------|-----------------------------|-------------------------------------------------------|
@@ -64,7 +64,7 @@ docker compose up --build
 
 ---
 
-### 🏆 Score Endpoints
+### Score Endpoints
 
 Base path: `/scores`
 

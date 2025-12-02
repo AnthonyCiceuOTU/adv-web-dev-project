@@ -2,6 +2,10 @@
 
 A full‑stack quiz app where users log in, pick a category & difficulty, answer questions pulled from **Open Trivia DB**, and save their scores.
 
+## YouTube Video Showcasing Selenium Base Test 
+Due to Selenium base tests not working when we presented in class, here is a video of it fully fixed and functional now:
+https://youtu.be/u6a1ZQ51-n8 
+
 ## How to run Manually
 
 ### Backend (FastAPI)

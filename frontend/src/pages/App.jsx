@@ -29,10 +29,30 @@ const cardStyle = {
   boxShadow: '0 18px 40px rgba(15, 23, 42, 0.18)',
   border: '1px solid rgba(148, 163, 184, 0.22)',
 };
-const headingStyle = { margin: 0, fontSize: 26, fontWeight: 800, color: '#0f172a' };
-const subheadingStyle = { margin: '4px 0 16px', fontSize: 13, color: '#6b7280' };
-const fieldLabelStyle = { fontSize: 13, fontWeight: 600, color: '#4b5563', marginBottom: 4 };
-const inputStyle = { padding: '9px 11px', borderRadius: 10, border: '1px solid #d1d5db', fontSize: 14, outline: 'none' };
+const headingStyle = {
+  margin: 0,
+  fontSize: 26,
+  fontWeight: 800,
+  color: '#0f172a',
+};
+const subheadingStyle = {
+  margin: '4px 0 16px',
+  fontSize: 13,
+  color: '#6b7280',
+};
+const fieldLabelStyle = {
+  fontSize: 13,
+  fontWeight: 600,
+  color: '#4b5563',
+  marginBottom: 4,
+};
+const inputStyle = {
+  padding: '9px 11px',
+  borderRadius: 10,
+  border: '1px solid #d1d5db',
+  fontSize: 14,
+  outline: 'none',
+};
 const primaryButtonStyle = {
   marginTop: 8,
   background: 'linear-gradient(135deg, #4f46e5, #6366f1)',
@@ -45,10 +65,33 @@ const primaryButtonStyle = {
   fontSize: 14,
   boxShadow: '0 10px 24px rgba(79, 70, 229, 0.4)',
 };
-const secondaryButtonStyle = { background: 'transparent', border: 'none', padding: 0, margin: 0, color: '#4f46e5', fontWeight: 600, cursor: 'pointer' };
-const errorStyle = { marginTop: 8, marginBottom: 4, fontSize: 13, color: '#b91c1c' };
-const successStyle = { marginTop: 8, marginBottom: 4, fontSize: 13, color: '#15803d' };
-const sectionTitleStyle = { margin: '0 0 12px', fontSize: 20, fontWeight: 700, color: '#111827' };
+const secondaryButtonStyle = {
+  background: 'transparent',
+  border: 'none',
+  padding: 0,
+  margin: 0,
+  color: '#4f46e5',
+  fontWeight: 600,
+  cursor: 'pointer',
+};
+const errorStyle = {
+  marginTop: 8,
+  marginBottom: 4,
+  fontSize: 13,
+  color: '#b91c1c',
+};
+const successStyle = {
+  marginTop: 8,
+  marginBottom: 4,
+  fontSize: 13,
+  color: '#15803d',
+};
+const sectionTitleStyle = {
+  margin: '0 0 12px',
+  fontSize: 20,
+  fontWeight: 700,
+  color: '#111827',
+};
 
 // -------- Google Login Component --------
 function GoogleLogin({ onLogin, token }) {
@@ -101,6 +144,30 @@ export default function App() {
   const [profileEmailInput, setProfileEmailInput] = useState('');
   const [emailStatus, setEmailStatus] = useState('');
   const [emailError, setEmailError] = useState('');
+
+  const ATTEMPT_KEY_PREFIX = 'quiz_attempt_';
+
+  function saveAttemptSnapshot(attemptId, payload) {
+    try {
+      localStorage.setItem(
+        `${ATTEMPT_KEY_PREFIX}${attemptId}`,
+        JSON.stringify(payload),
+      );
+    } catch (e) {
+      console.error('Failed to save attempt snapshot', e);
+    }
+  }
+
+  function loadAttemptSnapshot(attemptId) {
+    try {
+      const raw = localStorage.getItem(`${ATTEMPT_KEY_PREFIX}${attemptId}`);
+      if (!raw) return null;
+      return JSON.parse(raw);
+    } catch (e) {
+      console.error('Failed to load attempt snapshot', e);
+      return null;
+    }
+  }
 
   // ------------------- EFFECTS -------------------
   useEffect(() => {
@@ -158,24 +225,26 @@ export default function App() {
   }
 
   async function handleGoogleLogin(credential) {
-  try {
-    const { access_token } = await api('/auth/google', {
-      method: 'POST',
-      body: JSON.stringify({ id_token: credential }),
-    });
-    localStorage.setItem('token', access_token);
-    setToken(access_token);
-    setStage('pick');
-    setPage('home');
-  } catch (err) {
-    console.error('Google login failed', err);
-    setLoginError('Google login failed.');
+    try {
+      const { access_token } = await api('/auth/google', {
+        method: 'POST',
+        body: JSON.stringify({ id_token: credential }),
+      });
+      localStorage.setItem('token', access_token);
+      setToken(access_token);
+      setStage('pick');
+      setPage('home');
+    } catch (err) {
+      console.error('Google login failed', err);
+      setLoginError('Google login failed.');
+    }
   }
-}
 
   async function loadCats(tok) {
     try {
-      const c = await api('/quiz/categories', { headers: { Authorization: 'Bearer ' + tok } });
+      const c = await api('/quiz/categories', {
+        headers: { Authorization: 'Bearer ' + tok },
+      });
       setCats(c);
     } catch {
       setCats([]);
@@ -184,7 +253,9 @@ export default function App() {
 
   async function loadProfile(tok) {
     try {
-      const me = await api('/auth/me', { headers: { Authorization: 'Bearer ' + tok } });
+      const me = await api('/auth/me', {
+        headers: { Authorization: 'Bearer ' + tok },
+      });
       setProfile(me);
       setProfileNameInput(me.name || '');
       setProfileEmailInput(me.email || '');
@@ -204,10 +275,10 @@ export default function App() {
     setProfileNameInput('');
   }
 
-  // Quiz actions
-  async function start() {
+  // ------------------- QUIZ ACTIONS -------------------
+  async function startWithParams(cat, diff, amount) {
     const data = await api(
-      `/quiz/start?category=${category}&difficulty=${difficulty}&amount=${questionCount}`,
+      `/quiz/start?category=${cat}&difficulty=${diff}&amount=${amount}`,
       { headers: { Authorization: 'Bearer ' + token } },
     );
 
@@ -215,9 +286,18 @@ export default function App() {
       ...q,
       options: shuffle([q.correct_answer, ...q.incorrect_answers]),
     }));
+
+    setCategory(Number(cat));
+    setDifficulty(diff);
+    setQuestionCount(amount);
     setItems(enriched);
     setAnswers({});
     setStage('play');
+    setPage('home');
+  }
+
+  async function start() {
+    await startWithParams(category, difficulty, questionCount);
   }
 
   function pick(idx, opt) {
@@ -225,17 +305,66 @@ export default function App() {
   }
 
   async function submit() {
-    const correct = items.reduce((acc, q, i) => acc + (answers[i] === q.correct_answer ? 1 : 0), 0);
+    const correct = items.reduce(
+      (acc, q, i) => acc + (answers[i] === q.correct_answer ? 1 : 0),
+      0,
+    );
     setScore(correct);
-    await api('/scores', {
-      method: 'POST',
-      headers: { Authorization: 'Bearer ' + token },
-      body: JSON.stringify({ total: items.length, correct, category: String(category), difficulty }),
-    });
+
+    try {
+      const savedAttempt = await api('/scores', {
+        method: 'POST',
+        headers: { Authorization: 'Bearer ' + token },
+        body: JSON.stringify({
+          total: items.length,
+          correct,
+          category: String(category),
+          difficulty,
+        }),
+      });
+
+      if (savedAttempt && savedAttempt.id != null) {
+        saveAttemptSnapshot(savedAttempt.id, {
+          id: savedAttempt.id,
+          total: items.length,
+          category: String(category),
+          difficulty,
+          items,
+        });
+      }
+    } catch (e) {
+      console.error('Failed to submit score', e);
+    }
+
     setStage('result');
   }
 
-  // Settings actions
+  async function handleRedoAttempt(attempt) {
+    if (!token) return;
+
+    // Move away from Scores page so PLAY stage renders
+    setPage('home');
+
+    const snapshot = loadAttemptSnapshot(attempt.id);
+    if (snapshot && Array.isArray(snapshot.items) && snapshot.items.length) {
+      setCategory(Number(snapshot.category));
+      setDifficulty(snapshot.difficulty || 'easy');
+      const nextTotal = snapshot.total || snapshot.items.length;
+      setQuestionCount(nextTotal);
+      setItems(snapshot.items);
+      setAnswers({});
+      setStage('play');
+      return;
+    }
+
+    // Fallback if we don't have a snapshot (older attempts)
+    const cat = attempt.category;
+    const diff = attempt.difficulty || 'easy';
+    const amount = attempt.total || questionCount || 10;
+    await startWithParams(cat, diff, amount);
+  }
+
+  // ------------------- SETTINGS ACTIONS -------------------
   async function handleSaveName(e) {
     e.preventDefault();
     setProfileStatus('');
@@ -271,41 +400,46 @@ export default function App() {
   }
 
   async function handleDeleteAccount() {
-  if (!window.confirm('Delete your account and all scores? This cannot be undone.')) return;
+    if (
+      !window.confirm(
+        'Delete your account and all scores? This cannot be undone.',
+      )
+    )
+      return;
 
-  setProfileError(''); // clear previous error
+    setProfileError('');
 
-  try {
-    const res = await fetch('http://localhost:8000/auth/me', {
-      method: 'DELETE',
-      headers: { Authorization: 'Bearer ' + token },
-    });
+    try {
+      const res = await fetch('http://localhost:8000/auth/me', {
+        method: 'DELETE',
+        headers: { Authorization: 'Bearer ' + token },
+      });
 
-    if (!res.ok && res.status !== 204) {
-      // Attempt to parse error from backend
-      let data;
-      try {
-        data = await res.json();
-      } catch {}
-      throw new Error(data?.message || `Request failed with status ${res.status}`);
+      if (!res.ok && res.status !== 204) {
+        let data;
+        try {
+          data = await res.json();
+        } catch {}
+        throw new Error(
+          data?.message || `Request failed with status ${res.status}`,
+        );
+      }
+
+      localStorage.removeItem('token');
+      setToken('');
+      setStage('login');
+      setPage('home');
+      setProfile(null);
+      setProfileNameInput('');
+      setProfileEmailInput('');
+      setProfileStatus('');
+      setEmailStatus('');
+      setEmailError('');
+    } catch (err) {
+      console.error('Delete failed:', err);
+      setProfileError('Could not delete account.');
     }
-
-    // Successfully deleted, clear all state
-    localStorage.removeItem('token');
-    setToken('');
-    setStage('login');
-    setPage('home');
-    setProfile(null);
-    setProfileNameInput('');
-    setProfileEmailInput('');
-    setProfileStatus('');
-    setEmailStatus('');
-    setEmailError('');
-  } catch (err) {
-    console.error('Delete failed:', err);
-    setProfileError('Could not delete account.');
   }
-}
 
   // ------------------- RENDER -------------------
 
@@ -317,23 +451,48 @@ export default function App() {
         <div style={authCardWrapperStyle}>
           <div style={cardStyle}>
             <h1 style={headingStyle}>QuizMaster</h1>
-            <p style={subheadingStyle}>Log in or create an account to save your trivia scores.</p>
+            <p style={subheadingStyle}>
+              Log in or create an account to save your trivia scores.
+            </p>
 
             {!showSignup ? (
               <>
                 <h2 style={sectionTitleStyle}>Sign in</h2>
                 {loginError && <div style={errorStyle}>{loginError}</div>}
 
-                <form onSubmit={login} style={{ display: 'grid', gap: 10, marginTop: 8 }}>
+                <form
+                  onSubmit={login}
+                  style={{ display: 'grid', gap: 10, marginTop: 8 }}
+                >
                   <div style={{ display: 'grid', gap: 4 }}>
                     <label style={fieldLabelStyle}>Email</label>
-                    <input type="email" placeholder="you@example.com" value={email} onChange={(e) => { setEmail(e.target.value); setLoginError(''); }} style={inputStyle} />
+                    <input
+                      type="email"
+                      placeholder="you@example.com"
+                      value={email}
+                      onChange={(e) => {
+                        setEmail(e.target.value);
+                        setLoginError('');
+                      }}
+                      style={inputStyle}
+                    />
                   </div>
                   <div style={{ display: 'grid', gap: 4 }}>
                     <label style={fieldLabelStyle}>Password</label>
-                    <input type="password" placeholder="••••••••" value={password} onChange={(e) => { setPassword(e.target.value); setLoginError(''); }} style={inputStyle} />
+                    <input
+                      type="password"
+                      placeholder="••••••••"
+                      value={password}
+                      onChange={(e) => {
+                        setPassword(e.target.value);
+                        setLoginError('');
+                      }}
+                      style={inputStyle}
+                    />
                   </div>
-                  <button type="submit" style={primaryButtonStyle}>Sign in</button>
+                  <button type="submit" style={primaryButtonStyle}>
+                    Sign in
+                  </button>
                 </form>
 
                 <div style={{ marginTop: 12 }}>
@@ -342,7 +501,14 @@ export default function App() {
 
                 <p style={{ marginTop: 16, fontSize: 13 }}>
                   Need an account?{' '}
-                  <button type="button" style={secondaryButtonStyle} onClick={() => { setShowSignup(true); setSignupError(''); }}>
+                  <button
+                    type="button"
+                    style={secondaryButtonStyle}
+                    onClick={() => {
+                      setShowSignup(true);
+                      setSignupError('');
+                    }}
+                  >
                     Create one
                   </button>
                 </p>
@@ -351,21 +517,51 @@ export default function App() {
               <>
                 <h2 style={sectionTitleStyle}>Create account</h2>
                 {signupError && <div style={errorStyle}>{signupError}</div>}
-                <form onSubmit={registerUser} style={{ display: 'grid', gap: 10, marginTop: 8 }}>
+                <form
+                  onSubmit={registerUser}
+                  style={{ display: 'grid', gap: 10, marginTop: 8 }}
+                >
                   <div style={{ display: 'grid', gap: 4 }}>
                     <label style={fieldLabelStyle}>Email</label>
-                    <input type="email" placeholder="you@example.com" value={email} onChange={(e) => { setEmail(e.target.value); setSignupError(''); }} style={inputStyle} />
+                    <input
+                      type="email"
+                      placeholder="you@example.com"
+                      value={email}
+                      onChange={(e) => {
+                        setEmail(e.target.value);
+                        setSignupError('');
+                      }}
+                      style={inputStyle}
+                    />
                   </div>
                   <div style={{ display: 'grid', gap: 4 }}>
                     <label style={fieldLabelStyle}>Password</label>
-                    <input type="password" placeholder="Choose a password" value={password} onChange={(e) => { setPassword(e.target.value); setSignupError(''); }} style={inputStyle} />
+                    <input
+                      type="password"
+                      placeholder="Choose a password"
+                      value={password}
+                      onChange={(e) => {
+                        setPassword(e.target.value);
+                        setSignupError('');
+                      }}
+                      style={inputStyle}
+                    />
                   </div>
-                  <button type="submit" style={primaryButtonStyle}>Create account</button>
+                  <button type="submit" style={primaryButtonStyle}>
+                    Create account
+                  </button>
                 </form>
 
                 <p style={{ marginTop: 16, fontSize: 13 }}>
                   Already have an account?{' '}
-                  <button type="button" style={secondaryButtonStyle} onClick={() => { setShowSignup(false); setSignupError(''); }}>
+                  <button
+                    type="button"
+                    style={secondaryButtonStyle}
+                    onClick={() => {
+                      setShowSignup(false);
+                      setSignupError('');
+                    }}
+                  >
                     Sign in
                   </button>
                 </p>
@@ -377,7 +573,6 @@ export default function App() {
     );
   }
 
-
   // ============================================================
   // SCORES PAGE
   // ============================================================
@@ -386,153 +581,155 @@ export default function App() {
       <div style={appShellStyle}>
         <Nav onLogout={logout} showLogout={true} onNavigate={setPage} />
         <div style={pageWrapperStyle}>
-          <Scores token={token} />
+          <Scores token={token} onRedoAttempt={handleRedoAttempt} />
         </div>
       </div>
     );
   }
 
-// ============================================================
-// SETTINGS PAGE
-// ============================================================
-if (page === 'settings') {
-  return (
-    <div style={appShellStyle}>
-      <Nav onLogout={logout} showLogout={true} onNavigate={setPage} />
+  // ============================================================
+  // SETTINGS PAGE
+  // ============================================================
+  if (page === 'settings') {
+    return (
+      <div style={appShellStyle}>
+        <Nav onLogout={logout} showLogout={true} onNavigate={setPage} />
 
-      <div style={pageWrapperStyle}>
-        <div style={{ ...cardStyle, marginTop: 32, maxWidth: 640 }}>
-          <h2 style={sectionTitleStyle}>Account settings</h2>
-          <p style={subheadingStyle}>
-            Update your display name, email, or delete your account.
-          </p>
-
-          {!profile ? (
-            <p style={{ fontSize: 14, color: '#6b7280', marginTop: 16 }}>
-              Loading your profile...
+        <div style={pageWrapperStyle}>
+          <div style={{ ...cardStyle, marginTop: 32, maxWidth: 640 }}>
+            <h2 style={sectionTitleStyle}>Account settings</h2>
+            <p style={subheadingStyle}>
+              Update your display name, email, or delete your account.
             </p>
-          ) : (
-            <>
-              {/* Email Section */}
-              <div style={{ marginTop: 16 }}>
-                <form
-                  onSubmit={handleSaveEmail}
-                  style={{ display: "grid", gap: 8 }}
-                >
-                  <label style={fieldLabelStyle}>Email</label>
-                  <input
-                    type="email"
-                    value={profileEmailInput}
-                    onChange={(e) => {
-                      setProfileEmailInput(e.target.value);
-                      setEmailStatus("");
-                      setEmailError("");
-                    }}
-                    style={inputStyle}
-                  />
 
-                  {emailError && <div style={errorStyle}>{emailError}</div>}
-                  {emailStatus && <div style={successStyle}>{emailStatus}</div>}
+            {!profile ? (
+              <p style={{ fontSize: 14, color: '#6b7280', marginTop: 16 }}>
+                Loading your profile...
+              </p>
+            ) : (
+              <>
+                {/* Email Section */}
+                <div style={{ marginTop: 16 }}>
+                  <form
+                    onSubmit={handleSaveEmail}
+                    style={{ display: 'grid', gap: 8 }}
+                  >
+                    <label style={fieldLabelStyle}>Email</label>
+                    <input
+                      type="email"
+                      value={profileEmailInput}
+                      onChange={(e) => {
+                        setProfileEmailInput(e.target.value);
+                        setEmailStatus('');
+                        setEmailError('');
+                      }}
+                      style={inputStyle}
+                    />
 
-                  <button type="submit" style={primaryButtonStyle}>
-                    Save email
-                  </button>
-                </form>
-              </div>
+                    {emailError && <div style={errorStyle}>{emailError}</div>}
+                    {emailStatus && (
+                      <div style={successStyle}>{emailStatus}</div>
+                    )}
 
-              <hr
-                style={{
-                  margin: "20px 0",
-                  border: 0,
-                  borderTop: "1px solid #e5e7eb",
-                }}
-              />
-
-              {/* Display name section */}
-              <div style={{ marginTop: 4 }}>
-                <form
-                  onSubmit={handleSaveName}
-                  style={{ display: "grid", gap: 8 }}
-                >
-                  <label style={fieldLabelStyle}>Display name</label>
-                  <input
-                    type="text"
-                    placeholder="How should we greet you?"
-                    value={profileNameInput}
-                    onChange={(e) => {
-                      setProfileNameInput(e.target.value);
-                      setProfileStatus("");
-                      setProfileError("");
-                    }}
-                    style={inputStyle}
-                  />
-
-                  {profileError && (
-                    <div style={errorStyle}>{profileError}</div>
-                  )}
-                  {profileStatus && (
-                    <div style={successStyle}>{profileStatus}</div>
-                  )}
-
-                  <button type="submit" style={primaryButtonStyle}>
-                    Save display name
-                  </button>
-                </form>
-              </div>
-
-              <hr
-                style={{
-                  margin: "20px 0",
-                  border: 0,
-                  borderTop: "1px solid #e5e7eb",
-                }}
-              />
-
-              {/* Danger zone */}
-              <div style={{ marginTop: 4 }}>
-                <div
-                  style={{
-                    fontSize: 13,
-                    fontWeight: 700,
-                    color: "#b91c1c",
-                    marginBottom: 6,
-                  }}
-                >
-                  Danger zone
+                    <button type="submit" style={primaryButtonStyle}>
+                      Save email
+                    </button>
+                  </form>
                 </div>
 
-                <p
+                <hr
                   style={{
-                    fontSize: 13,
-                    color: "#6b7280",
-                    margin: 0,
-                    marginBottom: 10,
+                    margin: '20px 0',
+                    border: 0,
+                    borderTop: '1px solid #e5e7eb',
                   }}
-                >
-                  Deleting your account will remove your login and all stored
-                  quiz scores. This cannot be undone.
-                </p>
+                />
 
-                <button
-                  type="button"
-                  onClick={handleDeleteAccount}
+                {/* Display name section */}
+                <div style={{ marginTop: 4 }}>
+                  <form
+                    onSubmit={handleSaveName}
+                    style={{ display: 'grid', gap: 8 }}
+                  >
+                    <label style={fieldLabelStyle}>Display name</label>
+                    <input
+                      type="text"
+                      placeholder="How should we greet you?"
+                      value={profileNameInput}
+                      onChange={(e) => {
+                        setProfileNameInput(e.target.value);
+                        setProfileStatus('');
+                        setProfileError('');
+                      }}
+                      style={inputStyle}
+                    />
+
+                    {profileError && (
+                      <div style={errorStyle}>{profileError}</div>
+                    )}
+                    {profileStatus && (
+                      <div style={successStyle}>{profileStatus}</div>
+                    )}
+
+                    <button type="submit" style={primaryButtonStyle}>
+                      Save display name
+                    </button>
+                  </form>
+                </div>
+
+                <hr
                   style={{
-                    ...primaryButtonStyle,
-                    background:
-                      "linear-gradient(135deg, #ef4444, #dc2626)",
-                    boxShadow: "0 10px 24px rgba(239, 68, 68, 0.45)",
+                    margin: '20px 0',
+                    border: 0,
+                    borderTop: '1px solid #e5e7eb',
                   }}
-                >
-                  Delete account
-                </button>
-              </div>
-            </>
-          )}
+                />
+
+                {/* Danger zone */}
+                <div style={{ marginTop: 4 }}>
+                  <div
+                    style={{
+                      fontSize: 13,
+                      fontWeight: 700,
+                      color: '#b91c1c',
+                      marginBottom: 6,
+                    }}
+                  >
+                    Danger zone
+                  </div>
+
+                  <p
+                    style={{
+                      fontSize: 13,
+                      color: '#6b7280',
+                      margin: 0,
+                      marginBottom: 10,
+                    }}
+                  >
+                    Deleting your account will remove your login and all stored
+                    quiz scores. This cannot be undone.
+                  </p>
+
+                  <button
+                    type="button"
+                    onClick={handleDeleteAccount}
+                    style={{
+                      ...primaryButtonStyle,
+                      background:
+                        'linear-gradient(135deg, #ef4444, #dc2626)',
+                      boxShadow: '0 10px 24px rgba(239, 68, 68, 0.45)',
+                    }}
+                  >
+                    Delete account
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
         </div>
       </div>
-    </div>
-  );
-}
+    );
+  }
 
   // ============================================================
   // PICK PAGE

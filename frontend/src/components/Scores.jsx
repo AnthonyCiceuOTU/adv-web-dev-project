@@ -1,20 +1,18 @@
 import React, { useEffect, useState } from "react";
 import { api } from "../api";
 
-export default function Scores({ token }) {
+export default function Scores({ token, onRedoAttempt }) {
   const [scores, setScores] = useState([]);
   const [categories, setCategories] = useState([]);
 
-  function categoryName(id) {
-    const match = categories.find((c) => String(c.id) === String(id));
-    return match ? match.name : id;
-  }
-
   useEffect(() => {
-    if (!token) return;
+    if (!token) {
+      setScores([]);
+      setCategories([]);
+      return;
+    }
 
     api("/scores", {
-      method: "GET",
       headers: { Authorization: "Bearer " + token },
     })
       .then(setScores)
@@ -26,6 +24,11 @@ export default function Scores({ token }) {
       .then(setCategories)
       .catch(() => setCategories([]));
   }, [token]);
+
+  function categoryName(id) {
+    const match = categories.find((c) => String(c.id) === String(id));
+    return match ? match.name : id;
+  }
 
   if (!token) {
     return null;
@@ -60,6 +63,9 @@ export default function Scores({ token }) {
                   <th style={thStyle}>Correct</th>
                   <th style={thStyle}>Category</th>
                   <th style={thStyle}>Difficulty</th>
+                  {onRedoAttempt && (
+                    <th style={{ ...thStyle, textAlign: "right" }}>Redo</th>
+                  )}
                 </tr>
               </thead>
               <tbody>
@@ -69,6 +75,17 @@ export default function Scores({ token }) {
                     <td style={tdStyle}>{s.correct}</td>
                     <td style={tdStyle}>{categoryName(s.category)}</td>
                     <td style={tdStyle}>{s.difficulty}</td>
+                    {onRedoAttempt && (
+                      <td style={{ ...tdStyle, textAlign: "right" }}>
+                        <button
+                          type="button"
+                          onClick={() => onRedoAttempt(s)}
+                          style={redoButtonStyle}
+                        >
+                          Redo
+                        </button>
+                      </td>
+                    )}
                   </tr>
                 ))}
               </tbody>
@@ -82,36 +99,34 @@ export default function Scores({ token }) {
 
 const outerWrapperStyle = {
   maxWidth: "900px",
-  margin: "24px auto",
-  padding: "4px 8px",
+  width: "100%",
+  marginTop: 32,
 };
 
 const cardStyle = {
-  background: "white",
-  borderRadius: "18px",
-  padding: "20px 22px",
-  boxShadow: "0 18px 40px rgba(15, 23, 42, 0.18)",
-  border: "1px solid rgba(148, 163, 184, 0.25)",
+  background: "#ffffff",
+  borderRadius: 16,
+  padding: 20,
+  boxShadow: "0 18px 45px rgba(15, 23, 42, 0.12)",
 };
 
 const cardHeaderStyle = {
   display: "flex",
   alignItems: "center",
   justifyContent: "space-between",
-  gap: "12px",
-  marginBottom: "8px",
+  gap: 12,
 };
 
 const titleStyle = {
-  margin: 0,
-  fontSize: "22px",
+  fontSize: 20,
   fontWeight: 700,
+  margin: 0,
   color: "#0f172a",
 };
 
 const subtitleStyle = {
-  margin: "4px 0 0",
-  fontSize: "13px",
+  marginTop: 4,
+  fontSize: 14,
   color: "#6b7280",
 };
 
@@ -125,15 +140,15 @@ const badgeStyle = {
 };
 
 const emptyStateStyle = {
-  marginTop: "16px",
-  fontSize: "14px",
+  marginTop: 16,
+  fontSize: 14,
   color: "#6b7280",
 };
 
 const tableStyle = {
   width: "100%",
   borderCollapse: "collapse",
-  marginTop: "4px",
+  marginTop: 4,
 };
 
 const thStyle = {
@@ -150,4 +165,16 @@ const tdStyle = {
   fontSize: "14px",
   borderBottom: "1px solid #e5e7eb",
   color: "#111827",
+};
+
+const redoButtonStyle = {
+  padding: "6px 12px",
+  fontSize: 13,
+  borderRadius: 999,
+  border: "none",
+  cursor: "pointer",
+  fontWeight: 600,
+  background:
+    "linear-gradient(135deg, rgba(99, 102, 241, 0.1), rgba(59, 130, 246, 0.15))",
+  color: "#1d4ed8",
 };

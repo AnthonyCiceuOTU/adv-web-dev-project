@@ -1,0 +1,24 @@
+version: "3.9"
+
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    container_name: quizmaster-backend
+    ports:
+      - "8000:8000"
+    # If you use env vars like JWT_SECRET or EXTERNAL_API_BASE,
+    # you can add an env_file or environment: section here.
+    # env_file:
+    #   - backend/.env
+
+  frontend:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+    container_name: quizmaster-frontend
+    ports:
+      - "5173:80"   # host:container (so you open localhost:5173)
+    depends_on:
+      - backend
